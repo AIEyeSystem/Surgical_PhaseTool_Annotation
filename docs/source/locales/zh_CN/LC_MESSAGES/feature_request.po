@@ -1,12 +1,11 @@
 # SOME DESCRIPTIVE TITLE.
-# Copyright (C) 2025, Shuwei Ji and Hongyuan Zhang
-# This file is distributed under the same license as the ISAT-SAM package.
+# Copyright (C) 2026, zack zhao
+# This file is distributed under the same license as the IVAS package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
 #
-#, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: ISAT-SAM \n"
+"Project-Id-Version: IVAS \n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-09-30 11:43+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -24,8 +23,8 @@ msgid "Feature request"
 msgstr "功能请求"
 
 #: ../../source/feature_request.rst:4
-msgid "Thank you for helping us improve ISAT！"
-msgstr "非常感谢你帮助我们改进ISAT!"
+msgid "Thank you for helping us improve IVAS!"
+msgstr "非常感谢你帮助我们改进IVAS！"
 
 #: ../../source/feature_request.rst:7
 msgid "1. Submit a feature request"
@@ -42,8 +41,8 @@ msgstr "在提交前，你应该："
 #: ../../source/feature_request.rst:13
 msgid ""
 "**Take a moment to find out whether your idea fits with the scope and "
-"aims of ISAT.**"
-msgstr "花一些时间考虑您的想法是否与ISAT的范围和目标符合。"
+"aims of IVAS.**"
+msgstr "请确认您的想法符合IVAS的范围和目标。"
 
 #: ../../source/feature_request.rst:14
 msgid "**Make sure there are no simple alternatives.**"
@@ -51,9 +50,9 @@ msgstr "确定没有简单的替代方案。"
 
 #: ../../source/feature_request.rst:15
 msgid ""
-"**Finally, You should have a strong case to convince ISAT’s developers of"
+"**Finally, You should have a strong case to convince IVAS's developers of"
 " the merits of this feature.**"
-msgstr "最后，你应该提供一个强有力的理由来说服ISAT的开发者接收你所提的功能。"
+msgstr "最后，请提供充分理由说明该功能对IVAS的价值。"
 
 #: ../../source/feature_request.rst:17
 msgid ""

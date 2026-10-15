@@ -1,7 +1,7 @@
 Feature request
 ====================================
 
-Thank you for helping us improve ISAT！
+Thank you for helping us improve IVAS!
 
 1. Submit a feature request
 ------------------------------------
@@ -10,15 +10,17 @@ Feature requests are welcome.
 
 Before submit, you should:
 
-1. **Take a moment to find out whether your idea fits with the scope and aims of ISAT.**
+1. **Take a moment to find out whether your idea fits with the scope and aims of IVAS.**
 2. **Make sure there are no simple alternatives.**
-3. **Finally, You should have a strong case to convince ISAT’s developers of the merits of this feature.**
+3. **Explain the concrete benefit so IVAS's maintainers can evaluate the trade-off.**
 
-You can create a new issue to submit a feature request via the `GitHub issue <https://github.com/yatengLG/ISAT_with_segment_anything/issues>`_.
+Submit the request through the issue or support channel supplied with your IVAS
+distribution and address it to maintainer zack zhao.
 
 .. attention::
 
-    If you just have a simple idea, you can also exchange views in the `discussion hub <https://github.com/yatengLG/ISAT_with_segment_anything/discussions>`_ before request feature.
+    For an early idea, use the community or support channel supplied with your
+    distribution before creating a formal request.
 
 2. Template
 ------------------------------------

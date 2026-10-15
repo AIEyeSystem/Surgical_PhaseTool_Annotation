@@ -1,12 +1,11 @@
 # SOME DESCRIPTIVE TITLE.
-# Copyright (C) 2025, Shuwei Ji and Hongyuan Zhang
-# This file is distributed under the same license as the ISAT-SAM package.
+# Copyright (C) 2026, zack zhao
+# This file is distributed under the same license as the IVAS package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
 #
-#, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: ISAT-SAM \n"
+"Project-Id-Version: IVAS \n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-08-05 18:17+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -28,8 +27,8 @@ msgid "1. Category Setting"
 msgstr "1. 类别设置"
 
 #: ../../source/category_setting.rst:7
-msgid "In ISAT, you can customize category names and their display colors."
-msgstr "在ISAT中，可以很方便的自定义类别名与显示颜色。"
+msgid "In IVAS, you can customize category names and their display colors."
+msgstr "在IVAS中，可以很方便的自定义类别名与显示颜色。"
 
 #: ../../source/category_setting.rst:9
 msgid ""
@@ -42,8 +41,8 @@ msgid "category_setting.png"
 msgstr ""
 
 #: ../../source/category_setting.rst:14
-msgid "The background category is not modifiable in ISAT."
-msgstr "在ISAT中，不支持修改背景类__background__。"
+msgid "The background category is not modifiable in IVAS."
+msgstr "在IVAS中，不支持修改背景类__background__。"
 
 #: ../../source/category_setting.rst:17
 msgid "2. Select Category"
@@ -79,9 +78,9 @@ msgstr "2.2 类别筛选"
 
 #: ../../source/category_setting.rst:34
 msgid ""
-"ISAT uses a fuzzy matching algorithm to locate the desired category from "
+"IVAS uses a fuzzy matching algorithm to locate the desired category from "
 "a large number of categories."
-msgstr "ISAT通过模糊匹配算法，实现在大量类别中，快速筛选指定类别的功能。"
+msgstr "IVAS通过模糊匹配算法，实现在大量类别中，快速筛选指定类别的功能。"
 
 #: ../../source/category_setting.rst:-1
 msgid "category_search.gif"

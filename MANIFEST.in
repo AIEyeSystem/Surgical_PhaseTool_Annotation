@@ -1,10 +1,13 @@
-include ISAT/checkpoints/mobile_sam.pt
-include ISAT/ISAT_new_64.svg
-include ISAT/segment_any/sam3/bpe_simple_vocab_16e6.txt.gz
-recursive-include ISAT/segment_any *.py
-recursive-include ISAT/widgets *
-recursive-include ISAT/ui *
-recursive-include ISAT/scripts *
-recursive-include ISAT/ icons.qrc
-recursive-include ISAT *.yaml
-recursive-include ISAT/segment_anything_fast *.
+include IVAS/checkpoints/mobile_sam.pt
+include IVAS/branding.py
+include IVAS/icons.qrc
+include IVAS/icons_rc.py
+include logo/logo.png
+include logo/IVAS.ico
+include IVAS/segment_any/sam3/bpe_simple_vocab_16e6.txt.gz
+recursive-include IVAS/segment_any *.py
+recursive-include IVAS/widgets *
+recursive-include IVAS/ui *
+recursive-include IVAS/scripts *
+recursive-include IVAS *.yaml
+recursive-include IVAS/segment_anything_fast *

@@ -1,7 +1,7 @@
 Export
 ====================================
 
-1. ISAT Json Format
+1. IVAS JSON Format
 ------------------------------------
 
 ..  code-block:: sh
@@ -9,8 +9,8 @@ Export
 
     {
         "info": {
-            "description": "ISAT",                                      # Always ‘ISAT’ for the software to recoginize.
-            "folder": "xxx/ISAT_with_segment_anything/example/images",  # The directory where the images are stored.
+            "description": "IVAS",                                      # IVAS format marker.
+            "folder": "xxx/project/example/images",                     # The directory where the images are stored.
             "name": "000000002592.jpg",                                 # The name (path) of the image file.
             "width": 640,                                               # The dimensions of the image; depth is 3 for RGB images.
             "height": 366,
@@ -58,11 +58,14 @@ Click ``Converter`` button in Tool in Menu bar to open Converter interface.
 .. image:: ../../display/export.png
     :alt: export.png
 
-.. tip:: ISAT provides the conversion functionality between the following data formats:
+.. tip:: IVAS provides conversion between the following data formats:
 
-     - ISAT <==> COCO
-     - ISAT <==> YOLO
-     - ISAT <==> LABELME
-     - ISAT ===> VOC
-     - ISAT ===> VOC(object detection)
+     - IVAS <==> COCO
+     - IVAS <==> YOLO
+     - IVAS <==> LABELME
+     - IVAS ===> VOC
+     - IVAS ===> VOC(object detection)
+
+.. note:: Existing annotation JSON with the legacy ``IVAT`` description remains
+          readable; newly saved files use ``IVAS``.
 

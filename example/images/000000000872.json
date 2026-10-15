@@ -1,7 +1,7 @@
 {
     "info": {
-        "description": "ISAT",
-        "folder": "/mnt/disk2/PycharmProjects/ISAT_with_segment_anything/example/images",
+        "description": "IVAS",
+        "folder": "/mnt/disk2/PycharmProjects/IVAS_with_segment_anything/example/images",
         "name": "000000000872.jpg",
         "width": 621,
         "height": 640,

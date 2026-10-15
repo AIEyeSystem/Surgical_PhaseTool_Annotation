@@ -1,0 +1,547 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, zack zhao
+# This file is distributed under the same license as the IVAS package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: IVAS \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-08-21 17:34+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../source/_api/IVAS.formats.rst:2
+msgid "IVAS.formats package"
+msgstr ""
+
+#: ../../source/_api/IVAS.formats.rst:5
+msgid "Submodules"
+msgstr ""
+
+#: ../../source/_api/IVAS.formats.rst:8
+msgid "IVAS.formats.coco module"
+msgstr ""
+
+#: IVAS.formats.coco.COCO:1 IVAS.formats.labelme.LABELME:1
+#: IVAS.formats.voc.VOC:1 IVAS.formats.voc_detection.VOCDetect:1
+#: IVAS.formats.yolo.YOLO:1 of
+msgid "Bases: :py:class:`~IVAS.formats.ivas.IVAS`"
+msgstr ""
+
+#: IVAS.formats.coco.COCO:1 of
+msgid "COCO format"
+msgstr ""
+
+#: IVAS.formats.coco.COCO:5 IVAS.formats.labelme.LABELME:5
+#: IVAS.formats.voc.VOC:5 IVAS.formats.voc_detection.VOCDetect:5 of
+msgid "keep the crowded objects"
+msgstr ""
+
+#: IVAS.formats.coco.COCO IVAS.formats.ivas.IVAS IVAS.formats.ivas.IVAS.ANNO
+#: IVAS.formats.ivas.IVAS.ANNO.INFO IVAS.formats.ivas.IVAS.ANNO.OBJ
+#: IVAS.formats.labelme.LABELME IVAS.formats.voc.VOC
+#: IVAS.formats.voc_detection.VOCDetect of
+msgid "type"
+msgstr ""
+
+#: IVAS.formats.coco.COCO:7 IVAS.formats.ivas.IVAS.ANNO.OBJ:43
+#: IVAS.formats.labelme.LABELME:7 IVAS.formats.voc.VOC:7
+#: IVAS.formats.voc.VOC:13 IVAS.formats.voc_detection.VOCDetect:7 of
+msgid "bool"
+msgstr ""
+
+#: IVAS.formats.coco.COCO.read_from_coco:1 of
+msgid "Load annotations from a COCO json file."
+msgstr ""
+
+#: IVAS.formats.coco.COCO.read_from_coco IVAS.formats.coco.COCO.save_to_coco
+#: IVAS.formats.ivas.IVAS.load_one_ivas_json
+#: IVAS.formats.ivas.IVAS.read_from_IVAS
+#: IVAS.formats.ivas.IVAS.remove_file_suffix
+#: IVAS.formats.ivas.IVAS.save_one_ivas_json
+#: IVAS.formats.ivas.IVAS.save_to_IVAS
+#: IVAS.formats.labelme.LABELME.load_one_labelme_json
+#: IVAS.formats.labelme.LABELME.read_from_LABELME
+#: IVAS.formats.labelme.LABELME.save_one_labelme_json
+#: IVAS.formats.labelme.LABELME.save_to_LABELME
+#: IVAS.formats.voc.VOC.fill_polygon IVAS.formats.voc.VOC.save_one_voc_png
+#: IVAS.formats.voc.VOC.save_to_voc
+#: IVAS.formats.voc_detection.VOCDetect.save_one_voc_xml
+#: IVAS.formats.voc_detection.VOCDetect.save_to_XML
+#: IVAS.formats.yolo.YOLO.load_one_yolo_txt
+#: IVAS.formats.yolo.YOLO.merge_multi_segment
+#: IVAS.formats.yolo.YOLO.read_from_YOLO
+#: IVAS.formats.yolo.YOLO.save_one_yolo_txt IVAS.formats.yolo.YOLO.save_to_YOLO
+#: of
+msgid "Parameters"
+msgstr ""
+
+#: IVAS.formats.coco.COCO.read_from_coco:3
+#: IVAS.formats.coco.COCO.save_to_coco:3 of
+msgid "coco json annotations file."
+msgstr ""
+
+#: IVAS.formats.coco.COCO.read_from_coco IVAS.formats.coco.COCO.save_to_coco
+#: IVAS.formats.ivas.IVAS.load_one_ivas_json
+#: IVAS.formats.ivas.IVAS.read_from_IVAS
+#: IVAS.formats.ivas.IVAS.remove_file_suffix
+#: IVAS.formats.ivas.IVAS.save_one_ivas_json
+#: IVAS.formats.ivas.IVAS.save_to_IVAS
+#: IVAS.formats.labelme.LABELME.load_one_labelme_json
+#: IVAS.formats.labelme.LABELME.read_from_LABELME
+#: IVAS.formats.labelme.LABELME.save_one_labelme_json
+#: IVAS.formats.labelme.LABELME.save_to_LABELME
+#: IVAS.formats.voc.VOC.save_one_voc_png IVAS.formats.voc.VOC.save_to_voc
+#: IVAS.formats.voc_detection.VOCDetect.save_one_voc_xml
+#: IVAS.formats.voc_detection.VOCDetect.save_to_XML
+#: IVAS.formats.yolo.YOLO.load_one_yolo_txt
+#: IVAS.formats.yolo.YOLO.read_from_YOLO
+#: IVAS.formats.yolo.YOLO.save_one_yolo_txt IVAS.formats.yolo.YOLO.save_to_YOLO
+#: of
+msgid "Return type"
+msgstr ""
+
+#: IVAS.formats.coco.COCO.save_to_coco:1 of
+msgid "Save annotations to a COCO json file."
+msgstr ""
+
+#: IVAS.formats.coco.COCO.save_to_coco:5 of
+msgid "coco cates."
+msgstr ""
+
+#: ../../source/_api/IVAS.formats.rst:16
+msgid "IVAS.formats.ivas module"
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS:1 IVAS.formats.ivas.IVAS.ANNO:1
+#: IVAS.formats.ivas.IVAS.ANNO.INFO:1 IVAS.formats.ivas.IVAS.ANNO.OBJ:1 of
+msgid "Bases: :py:class:`object`"
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS:1 of
+msgid ""
+"The IVAS format provides a structured approach for representing image "
+"annotations."
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS:3 of
+msgid ""
+"File Naming: Each image has a corresponding .json file named after the "
+"image file (without the image extension)."
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS:7 of
+#, python-brace-format
+msgid "Dictionary of image annotations. {name: ANNO}"
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS:9 of
+msgid "dict"
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS:13 of
+msgid "categories."
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS:15 of
+msgid "tuple"
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.ANNO:1 of
+msgid "Annotation class."
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.ANNO:5 of
+msgid "INFO class."
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.ANNO:7 of
+msgid "INFO"
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.ANNO:11 of
+msgid "tuple of OBJs."
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.ANNO:13 of
+msgid "tuple[OBJ, ...]"
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.ANNO.INFO:1 of
+msgid "Contains metadata about the dataset and image."
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.ANNO.INFO:5 of
+msgid "Always \"IVAS\"."
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.ANNO.INFO:7 IVAS.formats.ivas.IVAS.ANNO.INFO:13
+#: IVAS.formats.ivas.IVAS.ANNO.INFO:19 IVAS.formats.ivas.IVAS.ANNO.OBJ:7
+#: IVAS.formats.ivas.IVAS.ANNO.OBJ:49 of
+msgid "str"
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.ANNO.INFO:11 of
+msgid "The directory where the images are stored."
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.ANNO.INFO:17 of
+msgid "The name of the image file"
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.ANNO.INFO:23 IVAS.formats.ivas.IVAS.ANNO.INFO:29 of
+msgid "The dimensions of the image."
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.ANNO.INFO:25 IVAS.formats.ivas.IVAS.ANNO.INFO:31
+#: IVAS.formats.ivas.IVAS.ANNO.INFO:37 IVAS.formats.ivas.IVAS.ANNO.OBJ:13
+#: IVAS.formats.ivas.IVAS.ANNO.OBJ:31 of
+msgid "int"
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.ANNO.INFO:35 of
+msgid "The dimensions of the image; depth is assumed to be 3 for RGB images."
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.ANNO.INFO:41 of
+msgid "An optional field for any additional notes related to the image."
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.ANNO.OBJ:1 of
+msgid "Lists all the annotated objects in the image."
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.ANNO.OBJ:5 of
+msgid "The class label of the object."
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.ANNO.OBJ:11 of
+msgid ""
+"An identifier that groups objects based on overlapping bounding boxes. If"
+" an object's bounding box is within another, they share the same group "
+"number."
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.ANNO.OBJ:17 of
+msgid "A list of [x, y] coordinates forming the polygon around the object."
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.ANNO.OBJ:19 IVAS.formats.ivas.IVAS.ANNO.OBJ:37 of
+msgid "list | tuple"
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.ANNO.OBJ:23 of
+msgid "The area covered by the object in pixels."
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.ANNO.OBJ:25 of
+msgid "float"
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.ANNO.OBJ:29 of
+msgid ""
+"A float indicating the sequence of the object. It increments within the "
+"same group, starting at 1.0 ."
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.ANNO.OBJ:35 of
+msgid "The bounding box coordinates in the format [x_min, y_min, x_max, y_max]."
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.ANNO.OBJ:41 of
+msgid "A boolean value indicating if the object is part of a crowd."
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.ANNO.OBJ:47 of
+msgid "An optional field for any additional notes related to the object."
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.read_from_IVAS:1 of
+msgid "Load annotations from a directory of json files."
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.read_from_IVAS:3
+#: IVAS.formats.ivas.IVAS.save_to_IVAS:3 of
+msgid "The directory of json files."
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.save_to_IVAS:1 of
+msgid "Save annotations to the directory of json files."
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.remove_file_suffix:1 of
+msgid "Remove the file suffix from the file name."
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.remove_file_suffix:3 of
+msgid "The file name."
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.load_one_ivas_json
+#: IVAS.formats.ivas.IVAS.remove_file_suffix
+#: IVAS.formats.labelme.LABELME.load_one_labelme_json
+#: IVAS.formats.yolo.YOLO.load_one_yolo_txt of
+msgid "Returns"
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.remove_file_suffix:6 of
+msgid "The file name without the file suffix."
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.load_one_ivas_json:1 of
+msgid "Load annotation from a json file."
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.load_one_ivas_json:3 of
+msgid "The file path."
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.load_one_ivas_json:6
+#: IVAS.formats.ivas.IVAS.save_one_ivas_json:3
+#: IVAS.formats.yolo.YOLO.load_one_yolo_txt:10 of
+msgid "The instance of the ANNO."
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.save_one_ivas_json:1
+#: IVAS.formats.labelme.LABELME.save_one_labelme_json:1 of
+msgid "Save annotation to a json file."
+msgstr ""
+
+#: IVAS.formats.ivas.IVAS.save_one_ivas_json:5 of
+msgid "The IVAS json file path."
+msgstr ""
+
+#: ../../source/_api/IVAS.formats.rst:24
+msgid "IVAS.formats.labelme module"
+msgstr ""
+
+#: IVAS.formats.labelme.LABELME:1 of
+msgid "LABELME format"
+msgstr ""
+
+#: IVAS.formats.labelme.LABELME.read_from_LABELME:1 of
+msgid "Load annotations from the directory of labelme json files."
+msgstr ""
+
+#: IVAS.formats.labelme.LABELME.read_from_LABELME:3
+#: IVAS.formats.labelme.LABELME.save_to_LABELME:3 of
+msgid "the directory of label json files."
+msgstr ""
+
+#: IVAS.formats.labelme.LABELME.save_to_LABELME:1 of
+msgid "Save annotations to the directory of labelme json files."
+msgstr ""
+
+#: IVAS.formats.labelme.LABELME.load_one_labelme_json:6
+#: IVAS.formats.labelme.LABELME.save_one_labelme_json:3
+#: IVAS.formats.voc.VOC.save_one_voc_png:3
+#: IVAS.formats.yolo.YOLO.save_one_yolo_txt:3 of
+msgid "the annotation."
+msgstr ""
+
+#: IVAS.formats.labelme.LABELME.load_one_labelme_json:3
+#: IVAS.formats.labelme.LABELME.save_one_labelme_json:5 of
+msgid "the path to save the json file."
+msgstr ""
+
+#: IVAS.formats.labelme.LABELME.load_one_labelme_json:1 of
+msgid "Load annotation from a labelme json file."
+msgstr ""
+
+#: ../../source/_api/IVAS.formats.rst:32
+msgid "IVAS.formats.voc module"
+msgstr ""
+
+#: IVAS.formats.voc.VOC:1 of
+msgid "VOC format"
+msgstr ""
+
+#: IVAS.formats.voc.VOC:11 of
+msgid "mark if an object is instance or sematic"
+msgstr ""
+
+#: IVAS.formats.voc.VOC.save_to_voc:1 of
+msgid "Save annotations to the directory of voc png files."
+msgstr ""
+
+#: IVAS.formats.voc.VOC.save_to_voc:3 of
+msgid "the directory to save the voc png files."
+msgstr ""
+
+#: IVAS.formats.voc.VOC.save_one_voc_png:1 of
+msgid "Save annotation to a VOC png file."
+msgstr ""
+
+#: IVAS.formats.voc.VOC.save_one_voc_png:5 of
+msgid "the path of the png file."
+msgstr ""
+
+#: IVAS.formats.voc.VOC.save_one_voc_png:7 of
+msgid "color map. shape [n, 3]"
+msgstr ""
+
+#: IVAS.formats.voc.VOC.save_one_voc_png:9 of
+#, python-brace-format
+msgid "the category index dict. {index: category}."
+msgstr ""
+
+#: IVAS.formats.voc.VOC.fill_polygon:1 of
+msgid "fill polygon with color on image."
+msgstr ""
+
+#: IVAS.formats.voc.VOC.fill_polygon:3 of
+msgid "the vertices of the polygon. [(x1, y1), (x2, y2), ...] ."
+msgstr ""
+
+#: IVAS.formats.voc.VOC.fill_polygon:5 of
+msgid "the image."
+msgstr ""
+
+#: IVAS.formats.voc.VOC.fill_polygon:7 of
+msgid "the color of the polygon. save image as mode 'P' with PIL."
+msgstr ""
+
+#: ../../source/_api/IVAS.formats.rst:40
+msgid "IVAS.formats.voc\\_detection module"
+msgstr ""
+
+#: IVAS.formats.voc_detection.VOCDetect:1 of
+msgid "VOC format for object detection"
+msgstr ""
+
+#: IVAS.formats.voc_detection.VOCDetect.save_to_XML:1 of
+msgid "Save annotations to the directory of voc xml files."
+msgstr ""
+
+#: IVAS.formats.voc_detection.VOCDetect.save_to_XML:3 of
+msgid "the directory to save the voc xml files"
+msgstr ""
+
+#: IVAS.formats.voc_detection.VOCDetect.save_one_voc_xml:1 of
+msgid "Save annotation to one voc xml file."
+msgstr ""
+
+#: IVAS.formats.voc_detection.VOCDetect.save_one_voc_xml:3 of
+msgid "the annotation"
+msgstr ""
+
+#: IVAS.formats.voc_detection.VOCDetect.save_one_voc_xml:5 of
+msgid "the xml file path"
+msgstr ""
+
+#: ../../source/_api/IVAS.formats.rst:48
+msgid "IVAS.formats.yolo module"
+msgstr ""
+
+#: IVAS.formats.yolo.YOLO:1 of
+msgid "YOLO format"
+msgstr ""
+
+#: IVAS.formats.yolo.YOLO:3 of
+msgid ""
+"YOLO use txt to save annotations. Every line container a annotation. "
+"format: class_index, x1, y1, x2, y2, x3, y3, ...."
+msgstr ""
+
+#: IVAS.formats.yolo.YOLO:6 of
+msgid ""
+"For cases where a single object contains multiple polygons, referring to "
+"the conversion code of YOLOv8 `general_json2yolo.py "
+"<https://github.com/ultralytics/JSON2YOLO/blob/c38a43f342428849c75c103c6d060012a83b5392/general_json2yolo.py>`_,"
+" a straight line is drawn between the polygons to combine the multiple "
+"polygons into a single polygon for saving."
+msgstr ""
+
+#: IVAS.formats.yolo.YOLO.read_from_YOLO:1 of
+msgid "Load annotations from the directory of YOLO txt files."
+msgstr ""
+
+#: IVAS.formats.yolo.YOLO.read_from_YOLO:3 of
+msgid "The directory of images."
+msgstr ""
+
+#: IVAS.formats.yolo.YOLO.read_from_YOLO:5
+#: IVAS.formats.yolo.YOLO.save_to_YOLO:3 of
+msgid "The directory of YOLO txt files."
+msgstr ""
+
+#: IVAS.formats.yolo.YOLO.read_from_YOLO:7 of
+#, python-brace-format
+msgid "A dictionary that maps class index to class name. {index: category} ."
+msgstr ""
+
+#: IVAS.formats.yolo.YOLO.save_to_YOLO:1 of
+msgid "Save annotations to the directory of YOLO txt files."
+msgstr ""
+
+#: IVAS.formats.yolo.YOLO.merge_multi_segment:1 of
+msgid "https://github.com/ultralytics/JSON2YOLO/blob/c38a43f342428849c75c103c6d060012a83b5392/general_json2yolo.py#L324"
+msgstr ""
+
+#: IVAS.formats.yolo.YOLO.merge_multi_segment:3 of
+msgid ""
+"Merge multi segments to one list. Find the coordinates with min distance "
+"between each segment, then connect these coordinates with one thin line "
+"to merge all segments into one."
+msgstr ""
+
+#: IVAS.formats.yolo.YOLO.merge_multi_segment:8 of
+msgid ""
+"original segmentations in coco's json file. like [segmentation1, "
+"segmentation2,...], each segmentation is a list of coordinates."
+msgstr ""
+
+#: IVAS.formats.yolo.YOLO.yolo2ivas_segmentation:1 of
+msgid "Convert YOLO segmentation format to IVAS segmentation format"
+msgstr ""
+
+#: IVAS.formats.yolo.YOLO.get_ivas_bbox:1 of
+msgid "Calculate the bbox from the IVAS segmentation"
+msgstr ""
+
+#: IVAS.formats.yolo.YOLO.bbox_within:1 of
+msgid "Check if two objects belong to the same group"
+msgstr ""
+
+#: IVAS.formats.yolo.YOLO.load_one_yolo_txt:1 of
+msgid "Load annotations from the directory of yolo txt files."
+msgstr ""
+
+#: IVAS.formats.yolo.YOLO.load_one_yolo_txt:3 of
+msgid "image path."
+msgstr ""
+
+#: IVAS.formats.yolo.YOLO.load_one_yolo_txt:5 of
+msgid "txt path."
+msgstr ""
+
+#: IVAS.formats.yolo.YOLO.load_one_yolo_txt:7 of
+#, python-brace-format
+msgid "class dictionary. {index: category} ."
+msgstr ""
+
+#: IVAS.formats.yolo.YOLO.save_one_yolo_txt:1 of
+msgid "Save annotation to one YOLO txt file"
+msgstr ""
+
+#: IVAS.formats.yolo.YOLO.save_one_yolo_txt:5 of
+msgid "the path of the txt file."
+msgstr ""
+
+#: IVAS.formats.yolo.YOLO.save_one_yolo_txt:7 of
+#, python-brace-format
+msgid "the cates index dictionary. {category: index} ."
+msgstr ""
+
+#: ../../source/_api/IVAS.formats.rst:56
+msgid "Module contents"
+msgstr ""
+

@@ -1,22 +1,24 @@
 Bug report
 ====================================
 
-Thank you for helping us improve ISAT！
+Thank you for helping us improve IVAS!
 
 1. Submit a bug report
 ------------------------------------
 
 Before submit, you should:
 
-1. **Use the GitHub issue search** - check if the issue has already been reported.
+1. **Search the available issue tracker** - check if the issue has already been reported.
 2. **Check if the issue has been fixed** - try to reproduce it using the latest version in the repository.
 3. **Isolate the problem** - Try to reproduce the problem in a minimal environment.
 
-You can create a new issue to submit a bug report via the `GitHub issue <https://github.com/yatengLG/ISAT_with_segment_anything/issues>`_.
+Submit the report through the issue or support channel supplied with your IVAS
+distribution and address it to maintainer zack zhao.
 
 .. attention::
 
-    If you're not sure whether it's a bug, you can try asking questions in the `discussion hub <https://github.com/yatengLG/ISAT_with_segment_anything/discussions>`_ instead of submitting a bug report.
+    If you are not sure whether it is a bug, use the community or support
+    channel supplied with your distribution before filing a report.
 
 2. Template
 ------------------------------------

@@ -1,3 +1,3 @@
 #!/bin/bash
-cd /ISAT_with_segment_anything
+cd /IVAS
 python main.py

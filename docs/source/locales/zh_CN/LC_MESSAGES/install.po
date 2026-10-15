@@ -1,12 +1,11 @@
 # SOME DESCRIPTIVE TITLE.
-# Copyright (C) 2025, Shuwei Ji and Hongyuan Zhang
-# This file is distributed under the same license as the ISAT-SAM package.
+# Copyright (C) 2026, zack zhao
+# This file is distributed under the same license as the IVAS package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
 #
-#, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: ISAT-SAM \n"
+"Project-Id-Version: IVAS \n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-12-25 16:56+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -40,8 +39,8 @@ msgid "activate new environment"
 msgstr "激活新环境"
 
 #: ../../source/install.rst:21
-msgid "Install ISAT-SAM using pip"
-msgstr "使用pip安装isat-sam"
+msgid "Install IVAS from the source checkout"
+msgstr "从源码目录安装 IVAS"
 
 #: ../../source/install.rst:29 ../../source/install.rst:81
 msgid ""
@@ -55,11 +54,11 @@ msgstr "运行"
 
 #: ../../source/install.rst:33 ../../source/install.rst:85
 msgid "Start the application via the command line:"
-msgstr "通过命令行启动ISAT"
+msgstr "通过命令行启动IVAS"
 
 #: ../../source/install.rst:39
-msgid "Recommended install isat-sam using pip"
-msgstr "推荐使用pip安装isat-sam"
+msgid "Install the current IVAS source tree with pip"
+msgstr "推荐使用 pip 安装当前 IVAS 源码目录"
 
 #: ../../source/install.rst:42
 msgid "Option 2: Install from Source Code"

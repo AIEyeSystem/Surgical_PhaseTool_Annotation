@@ -1,7 +1,7 @@
-ISAT
+IVAS
 ====
 
 .. toctree::
    :maxdepth: 4
 
-   ISAT
+   IVAS

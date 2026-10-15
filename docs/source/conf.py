@@ -9,9 +9,9 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('../../'))
 
-project = 'ISAT-SAM'
-copyright = '2025, Shuwei Ji and Hongyuan Zhang'
-author = 'Shuwei Ji and Hongyuan Zhang'
+project = 'IVAS'
+copyright = '2026, zack zhao'
+author = 'zack zhao'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -51,8 +51,8 @@ html_theme_options = {
     'style_external_links': True,
     'style_nav_header_background': '#2980B9',
 }
-html_logo = "_static/ISAT_new_64.svg"
-html_favicon = "_static/ISAT_new_64.svg"
+html_logo = "../../logo/logo.png"
+html_favicon = "../../logo/IVAS.ico"
 html_show_sourcelink = True
 html_static_path = ['_static']
 

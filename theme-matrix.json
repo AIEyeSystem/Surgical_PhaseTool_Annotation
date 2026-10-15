@@ -1,0 +1,53 @@
+{
+  "version": 2,
+  "supportedThemes": ["clinical-light"],
+  "notes": "IVAS intentionally ships one low-glare clinical-light shell with a dark media canvas. Semantic roles are shared by the PyQt stylesheet and timeline rendering.",
+  "themes": {
+    "clinical-light": {
+      "roles": {
+        "canvas": "#111827",
+        "canvas-raised": "#1F2937",
+        "surface": "#F6F8FB",
+        "surface-raised": "#FFFFFF",
+        "surface-subtle": "#E8EEF4",
+        "text": "#172033",
+        "text-muted": "#526174",
+        "border": "#718096",
+        "border-subtle": "#CBD5E1",
+        "primary": "#087F8C",
+        "primary-hover": "#066B76",
+        "primary-active": "#075B66",
+        "on-primary": "#FFFFFF",
+        "danger": "#B42318",
+        "danger-hover": "#8F1C14",
+        "danger-active": "#731610",
+        "on-danger": "#FFFFFF",
+        "focus": "#087F8C",
+        "selection": "#C9E9ED",
+        "on-selection": "#0B3E45",
+        "disabled-bg": "#E2E8EF",
+        "disabled-text": "#526174",
+        "timeline-phase": "#21A6B3",
+        "timeline-task": "#F4A340",
+        "success": "#207A4B",
+        "warning": "#9A6700"
+      },
+      "pairs": [
+        {"name": "body", "foreground": "text", "background": "surface", "kind": "normal-text"},
+        {"name": "muted-text", "foreground": "text-muted", "background": "surface", "kind": "normal-text"},
+        {"name": "primary-action", "foreground": "on-primary", "background": "primary", "kind": "normal-text"},
+        {"name": "primary-action-hover", "foreground": "on-primary", "background": "primary-hover", "kind": "normal-text"},
+        {"name": "primary-action-active", "foreground": "on-primary", "background": "primary-active", "kind": "normal-text"},
+        {"name": "danger-action", "foreground": "on-danger", "background": "danger", "kind": "normal-text"},
+        {"name": "danger-action-hover", "foreground": "on-danger", "background": "danger-hover", "kind": "normal-text"},
+        {"name": "danger-action-active", "foreground": "on-danger", "background": "danger-active", "kind": "normal-text"},
+        {"name": "border", "foreground": "border", "background": "surface", "kind": "ui"},
+        {"name": "focus", "foreground": "focus", "background": "surface", "kind": "ui"},
+        {"name": "selection", "foreground": "on-selection", "background": "selection", "kind": "normal-text"},
+        {"name": "disabled-text", "foreground": "disabled-text", "background": "disabled-bg", "kind": "normal-text"},
+        {"name": "timeline-phase", "foreground": "timeline-phase", "background": "canvas", "kind": "graphic"},
+        {"name": "timeline-task", "foreground": "timeline-task", "background": "canvas", "kind": "graphic"}
+      ]
+    }
+  }
+}

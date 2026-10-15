@@ -4,6 +4,7 @@ scikit-image
 opencv_python_headless
 pillow
 pyqt5
+python-vlc>=3.0.21203
 pyyaml
 torch>=2.3.0
 torchvision

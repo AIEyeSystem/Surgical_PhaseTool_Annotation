@@ -1,0 +1,229 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, zack zhao
+# This file is distributed under the same license as the IVAS package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: IVAS \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-12-31 14:08+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../source/_api/IVAS.rst:2
+msgid "IVAS package"
+msgstr ""
+
+#: ../../source/_api/IVAS.rst:5
+msgid "Subpackages"
+msgstr ""
+
+#: ../../source/_api/IVAS.rst:16
+msgid "Submodules"
+msgstr ""
+
+#: ../../source/_api/IVAS.rst:19
+msgid "IVAS.annotation module"
+msgstr ""
+
+#: IVAS.annotation.Annotation:1 IVAS.annotation.Object:1 of
+msgid "Bases: :py:class:`object`"
+msgstr ""
+
+#: IVAS.annotation.Object:1 of
+msgid "A class to represent an annotation object."
+msgstr ""
+
+#: IVAS.annotation.Annotation IVAS.annotation.Object IVAS.configs.load_config
+#: IVAS.configs.save_config of
+msgid "Parameters"
+msgstr ""
+
+#: IVAS.annotation.Object:3 of
+msgid "The category of the object."
+msgstr ""
+
+#: IVAS.annotation.Object:5 of
+msgid "The group of the object."
+msgstr ""
+
+#: IVAS.annotation.Object:7 of
+msgid "The vertices of the object.[(x1, y1), (x2, y2), ...]"
+msgstr ""
+
+#: IVAS.annotation.Object:9 of
+msgid "The area of the object."
+msgstr ""
+
+#: IVAS.annotation.Object:11 of
+msgid "The layer of the object."
+msgstr ""
+
+#: IVAS.annotation.Object:13 of
+msgid "The bbox of the object. [xmin, ymin, xmax, ymax]"
+msgstr ""
+
+#: IVAS.annotation.Object:15 of
+msgid "The crowd tag of the object."
+msgstr ""
+
+#: IVAS.annotation.Object:17 of
+msgid "The note of the object."
+msgstr ""
+
+#: IVAS.annotation.Annotation:1 of
+msgid "A class to represent an annotation containing many objects."
+msgstr ""
+
+#: IVAS.annotation.Annotation:3 of
+msgid "The path to the image."
+msgstr ""
+
+#: IVAS.annotation.Annotation:5 IVAS.annotation.Annotation:28 of
+msgid "The path to the label file."
+msgstr ""
+
+#: IVAS.annotation.Annotation:10 of
+msgid "Always 'IVAS'."
+msgstr ""
+
+#: IVAS.annotation.Annotation of
+msgid "type"
+msgstr ""
+
+#: IVAS.annotation.Annotation:12 IVAS.annotation.Annotation:18
+#: IVAS.annotation.Annotation:24 IVAS.annotation.Annotation:30
+#: IVAS.annotation.Annotation:36 of
+msgid "str"
+msgstr ""
+
+#: IVAS.annotation.Annotation:16 of
+msgid "The path to the folder where the images are located."
+msgstr ""
+
+#: IVAS.annotation.Annotation:22 of
+msgid "The name of the image."
+msgstr ""
+
+#: IVAS.annotation.Annotation:34 of
+msgid "The note of the image."
+msgstr ""
+
+#: IVAS.annotation.Annotation:40 of
+msgid "The height of the image."
+msgstr ""
+
+#: IVAS.annotation.Annotation:42 IVAS.annotation.Annotation:48
+#: IVAS.annotation.Annotation:54 of
+msgid "int"
+msgstr ""
+
+#: IVAS.annotation.Annotation:46 of
+msgid "The width of the image."
+msgstr ""
+
+#: IVAS.annotation.Annotation:52 of
+msgid "The depth of the image."
+msgstr ""
+
+#: IVAS.annotation.Annotation.load_annotation:1 of
+msgid "Load annotation from self.label_path"
+msgstr ""
+
+#: IVAS.annotation.Annotation.save_annotation:1 of
+msgid "Save annotation to self.label_path"
+msgstr ""
+
+#: ../../source/_api/IVAS.rst:27
+msgid "IVAS.configs module"
+msgstr ""
+
+#: IVAS.configs.load_config:1 of
+msgid "Load config file"
+msgstr ""
+
+#: IVAS.configs.load_config:3 IVAS.configs.save_config:5 of
+msgid "config file path"
+msgstr ""
+
+#: IVAS.configs.load_config of
+msgid "Returns"
+msgstr ""
+
+#: IVAS.configs.load_config:6 IVAS.configs.save_config:3 of
+msgid "config dict"
+msgstr ""
+
+#: IVAS.configs.load_config IVAS.configs.save_config of
+msgid "Return type"
+msgstr ""
+
+#: IVAS.configs.save_config:1 of
+msgid "Save config file"
+msgstr ""
+
+#: IVAS.configs.CONTOURMode:1 IVAS.configs.DRAWMode:1 IVAS.configs.MAPMode:1
+#: IVAS.configs.STATUSMode:1 of
+msgid "Bases: :py:class:`~enum.Enum`"
+msgstr ""
+
+#: IVAS.configs.STATUSMode:1 of
+msgid "The status mode"
+msgstr ""
+
+#: IVAS.configs.DRAWMode:1 of
+msgid "The draw mode."
+msgstr ""
+
+#: ../../docstring IVAS.configs.DRAWMode.POLYGON:1 of
+msgid "Manually draw polygon"
+msgstr ""
+
+#: ../../docstring IVAS.configs.DRAWMode.SEGMENTANYTHING_POINT:1 of
+msgid "Segment anything with point prompt."
+msgstr ""
+
+#: ../../docstring IVAS.configs.DRAWMode.SEGMENTANYTHING_BOX:1 of
+msgid "Segment anything with box prompt."
+msgstr ""
+
+#: ../../docstring IVAS.configs.DRAWMode.SEGMENTANYTHING_VISUAL:1 of
+msgid "Segment anything with visual prompt."
+msgstr ""
+
+#: IVAS.configs.MAPMode:1 of
+msgid "Canvas show map mode"
+msgstr ""
+
+#: IVAS.configs.CONTOURMode:1 of
+msgid "Contour Mode - ways to convert masks to polygons."
+msgstr ""
+
+#: ../../docstring IVAS.configs.CONTOURMode.SAVE_MAX_ONLY:1 of
+msgid "Only save max contour."
+msgstr ""
+
+#: ../../docstring IVAS.configs.CONTOURMode.SAVE_EXTERNAL:1 of
+msgid "Only save external contour."
+msgstr ""
+
+#: ../../docstring IVAS.configs.CONTOURMode.SAVE_ALL:1 of
+msgid "Only save all contour."
+msgstr ""
+
+#: ../../source/_api/IVAS.rst:35
+msgid "IVAS.main module"
+msgstr ""
+
+#: ../../source/_api/IVAS.rst:43
+msgid "Module contents"
+msgstr ""
+

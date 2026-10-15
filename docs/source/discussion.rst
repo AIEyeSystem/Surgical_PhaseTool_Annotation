@@ -1,15 +1,14 @@
-discussion hub
+Discussion hub
 ====================================
 
-ISAT uses GitHub Discussions as the community discussion hub.
-
-`ISAT community discussion hub <https://github.com/yatengLG/ISAT_with_segment_anything/discussions>`_ is the main place for users, contributors, and maintainers to exchange ideas, ask for help, and discuss project developments.
-
-Welcome to post in the `ISAT community discussion hub <https://github.com/yatengLG/ISAT_with_segment_anything/discussions>`_ !
+Use the community or support channel supplied with your IVAS distribution to
+exchange ideas, ask for help, and discuss project development. This page does
+not hard-code an upstream discussion URL as the current IVAS support channel.
 
 .. tip::
 
-    I will receive notifications for all posts in the discussion center as soon as they are made. So don't worry about not getting feedback when you post in the discussion area.
+    Include the IVAS version, operating system, and enough context for others to
+    reproduce the question. Current maintenance is handled by zack zhao.
 
 1. Category sections
 ------------------------------------

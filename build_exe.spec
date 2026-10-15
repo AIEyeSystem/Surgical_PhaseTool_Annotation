@@ -1,120 +1,185 @@
 # -*- mode: python ; coding: utf-8 -*-
-# PyInstaller spec file for ISAT_with_segment_anything
-# 使用方法: pyinstaller build_exe.spec
+"""PyInstaller recipe for the portable Windows application.
+
+The build intentionally uses one-folder mode: CUDA and Qt ship beside the
+launcher, so startup does not unpack several gigabytes into a temporary
+directory on every run.
+"""
 
 import os
-from PyInstaller.utils.hooks import collect_all, collect_data_files, collect_submodules
+from pathlib import Path
 
-block_cipher = None
+from PyInstaller.utils.hooks import (
+    collect_data_files,
+    collect_submodules,
+    copy_metadata,
+)
 
-# 收集所有需要的数据文件
-datas = []
+
+PROJECT_ROOT = Path.cwd().resolve()
+if not (PROJECT_ROOT / "main.py").is_file():
+    raise SystemExit("Run PyInstaller from the repository root.")
+
+WINDOWS_ICON = PROJECT_ROOT / "logo" / "IVAS.ico"
+VERSION_INFO = PROJECT_ROOT / "build_version_info.txt"
+for required_asset in (WINDOWS_ICON, VERSION_INFO):
+    if not required_asset.is_file():
+        raise SystemExit("Required IVAS build asset is missing: {}".format(required_asset))
+
+datas = collect_data_files(
+    "IVAS",
+    # TorchScript and Triton inspect decorated SAM functions at runtime. Keep
+    # their source beside the frozen bytecode so JIT compilation can resolve it.
+    include_py_files=True,
+    excludes=[
+        "checkpoints/**",
+        "**/*.pt",
+        "**/*.pth",
+        "**/__pycache__/**",
+        "IVAS_new_64.svg",
+        "ivas_legacy_categories.yaml",
+    ],
+)
 binaries = []
 hiddenimports = []
 
-# 收集ISAT包的所有数据
-datas += collect_data_files('ISAT', include_py_files=True)
+# Bundle the reference VLC runtime as the codec fallback for media that the Qt
+# backend cannot decode. Python-vlc is imported lazily after these paths are set.
+vlc_root = PROJECT_ROOT / "ref" / "Surgical_Video_Phrase_Tasks_Annotation"
+if (vlc_root / "libvlc.dll").is_file():
+    for filename in ("libvlc.dll", "libvlccore.dll"):
+        source = vlc_root / filename
+        if source.is_file():
+            binaries.append((str(source), "vlc"))
+    plugins_root = vlc_root / "plugins"
+    if plugins_root.is_dir():
+        for source in plugins_root.rglob("*"):
+            if source.is_file():
+                destination = Path("vlc") / source.parent.relative_to(vlc_root)
+                datas.append((str(source), destination.as_posix()))
 
-# 添加图标文件
-datas += [('icons', 'icons')]
+logo_dir = PROJECT_ROOT / "logo"
+if logo_dir.is_dir():
+    datas.append((str(logo_dir), "logo"))
 
-# 添加配置文件
-if os.path.exists('ISAT/isat.yaml'):
-    datas += [('ISAT/isat.yaml', 'ISAT')]
-if os.path.exists('ISAT/software.yaml'):
-    datas += [('ISAT/software.yaml', 'ISAT')]
+for documentation in ("README.md", "README-cn.md", "LICENSE"):
+    source = PROJECT_ROOT / documentation
+    if source.is_file():
+        datas.append((str(source), "."))
 
-# 添加帮助文档
-if os.path.exists('ISAT/docs'):
-    datas += [('ISAT/docs', 'ISAT/docs')]
+smoke_image = PROJECT_ROOT / "example" / "images" / "000000000113.jpg"
+if smoke_image.is_file():
+    datas.append((str(smoke_image), "_build_smoke"))
 
-# 收集PyQt5相关
-tmp_ret = collect_all('PyQt5')
-datas += tmp_ret[0]
-binaries += tmp_ret[1]
-hiddenimports += tmp_ret[2]
+checkpoint_setting = os.environ.get("IVAS_BUNDLE_CHECKPOINT", os.environ.get("IVAT_BUNDLE_CHECKPOINT"))
+if checkpoint_setting:
+    checkpoint_path = Path(checkpoint_setting).resolve()
+    if not checkpoint_path.is_file():
+        raise SystemExit("Bundled checkpoint does not exist: {}".format(checkpoint_path))
+    datas.append((str(checkpoint_path), "IVAS/checkpoints"))
 
-# 收集torch相关
-tmp_ret = collect_all('torch')
-datas += tmp_ret[0]
-binaries += tmp_ret[1]
-hiddenimports += tmp_ret[2]
-
-# 收集torchvision相关
-tmp_ret = collect_all('torchvision')
-datas += tmp_ret[0]
-binaries += tmp_ret[1]
-hiddenimports += tmp_ret[2]
-
-# 收集其他关键依赖
-for package in ['timm', 'imgviz', 'skimage', 'cv2', 'PIL', 'yaml',
-                'pycocotools', 'shapely', 'hydra', 'tqdm',
-                'fuzzywuzzy', 'Levenshtein', 'iopath', 'orjson',
-                'pydicom', 'requests', 'numpy']:
+# PyInstaller's official hooks discover Torch, Torchvision and Triton binaries,
+# including the CUDA DLL dependency graph. Only add non-code package data here;
+# collecting every Torch submodule would also pull unrelated training,
+# TensorBoard, Dask, Arrow and notebook stacks into this inference application.
+for package in ("timm", "hydra", "omegaconf"):
     try:
-        tmp_ret = collect_all(package)
-        datas += tmp_ret[0]
-        binaries += tmp_ret[1]
-        hiddenimports += tmp_ret[2]
-    except:
+        package_data = collect_data_files(package, include_py_files=False)
+    except Exception as error:
+        print("Optional collection skipped for {}: {}".format(package, error))
+        continue
+    datas += package_data
+
+for package in (
+    "torch",
+    "torchvision",
+    "timm",
+    "hydra-core",
+    "omegaconf",
+    "ivas-sam",
+):
+    try:
+        datas += copy_metadata(package)
+    except Exception:
         pass
 
-# 添加隐藏导入
+excluded_sam3_prefixes = (
+    "IVAS.segment_any.sam3.agent",
+    "IVAS.segment_any.sam3.eval",
+    "IVAS.segment_any.sam3.train",
+)
+hiddenimports += collect_submodules(
+    "IVAS.segment_any.sam3",
+    filter=lambda name: not name.startswith(excluded_sam3_prefixes),
+)
+hiddenimports += collect_submodules("IVAS.segment_any.sam2")
 hiddenimports += [
-    'ISAT',
-    'ISAT.main',
-    'ISAT.annotation',
-    'ISAT.configs',
-    'PIL._tkinter_finder',
-    'pkg_resources.py2_warn',
-    'sklearn.utils._weight_vector',
-    'torchvision.io.image',
+    "IVAS",
+    "IVAS.main",
+    "IVAS.annotation",
+    "IVAS.configs",
+    "IVAS.theme",
+    "cv2",
+    "vlc",
+    "PIL._tkinter_finder",
+    "pycocotools._mask",
+    "torchvision.io.image",
 ]
 
 a = Analysis(
-    ['main.py'],
-    pathex=[],
+    [str(PROJECT_ROOT / "main.py")],
+    pathex=[str(PROJECT_ROOT)],
     binaries=binaries,
     datas=datas,
-    hiddenimports=hiddenimports,
+    hiddenimports=sorted(set(hiddenimports)),
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=['pandas'],  # 排除不需要的大型库（保留matplotlib，因为imgviz需要它）
-    win_no_prefer_redirects=False,
-    win_private_assemblies=False,
-    cipher=block_cipher,
+    excludes=[
+        "pandas",
+        "dask",
+        "distributed",
+        "pyarrow",
+        "zarr",
+        "zmq",
+        "matplotlib",
+        "tensorboard",
+        "jupyter",
+        "IPython",
+        "IVAS.segment_any.sam3.agent",
+        "IVAS.segment_any.sam3.eval",
+        "IVAS.segment_any.sam3.train",
+    ],
     noarchive=False,
 )
 
-pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+pyz = PYZ(a.pure)
 
 exe = EXE(
     pyz,
     a.scripts,
     [],
     exclude_binaries=True,
-    name='ISAT_SAM',
+    name="IVAS",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
-    console=False,  # 不显示控制台窗口
+    upx=False,
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='icons/M_Favicon.ico' if os.path.exists('icons/M_Favicon.ico') else None,
+    icon=str(WINDOWS_ICON),
+    version=str(VERSION_INFO),
 )
 
 coll = COLLECT(
     exe,
     a.binaries,
-    a.zipfiles,
     a.datas,
     strip=False,
-    upx=True,
-    upx_exclude=[],
-    name='ISAT_SAM',
+    upx=False,
+    name="IVAS",
 )

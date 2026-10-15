@@ -1,12 +1,11 @@
 # SOME DESCRIPTIVE TITLE.
-# Copyright (C) 2025, Shuwei Ji and Hongyuan Zhang
-# This file is distributed under the same license as the ISAT-SAM package.
+# Copyright (C) 2026, zack zhao
+# This file is distributed under the same license as the IVAS package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
 #
-#, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: ISAT-SAM \n"
+"Project-Id-Version: IVAS \n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-12-25 16:56+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -59,12 +58,11 @@ msgstr ""
 
 #: ../../source/sam_model.rst:23
 msgid ""
-"To use the remote sam, you must first install `ISAT with segment anything"
-" backend "
+"To use remote SAM, install the `compatible Segment Anything backend "
 "<https://github.com/yatengLG/ISAT_with_segment_anything_backend>`_ on the"
 " remote server."
 msgstr ""
-"使用远程SAM编码服务，需要先在远程服务器上安装 `ISAT with segment anything backend "
+"使用远程SAM编码服务，需要先在远程服务器上安装 `兼容的 Segment Anything 后端 "
 "<https://github.com/yatengLG/ISAT_with_segment_anything_backend>`_"
 
 #: ../../source/sam_model.rst:25
@@ -445,9 +443,9 @@ msgstr ""
 
 #: ../../source/sam_model.rst:191
 msgid ""
-"If you are running ISAT on a cpu, it is recommended to use the "
+"If you are running IVAS on a CPU, it is recommended to use the "
 "**sam_hq_vit_tiny.pth** or **mobile_sam.pt** model."
-msgstr "如果你在CPU上运行ISAT，推荐使用 **sam_hq_vit_tiny.pth** 或 **mobile_sam.pt** 模型。"
+msgstr "如果你在CPU上运行IVAS，推荐使用 **sam_hq_vit_tiny.pth** 或 **mobile_sam.pt** 模型。"
 
 #: ../../source/sam_model.rst:193
 msgid ""

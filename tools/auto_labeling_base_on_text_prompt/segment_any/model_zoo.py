@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# @Author  : LG
+# @Maintainer: zack zhao
 
 model_dict = {
     "mobile_sam.pt": {

@@ -20,7 +20,7 @@ Click the ``Remote SAM`` button in the right toolbar to open the remote sam inte
 .. image:: ../../display/remote_sam.png
     :alt: remote_sam.png
 
-.. tip:: To use the remote sam, you must first install `ISAT with segment anything backend <https://github.com/yatengLG/ISAT_with_segment_anything_backend>`_ on the remote server.
+.. tip:: To use remote SAM, install the `compatible Segment Anything backend <https://github.com/yatengLG/ISAT_with_segment_anything_backend>`_ on the remote server. The linked backend retains its historical repository name.
 
          On the local machine, you also need to run the SAM model for decoding.
 
@@ -187,12 +187,31 @@ Click the ``Remote SAM`` button in the right toolbar to open the remote sam inte
      - 3.5G
      - yes
      - yes
+   * - SAM3.1
+     - sam3.1_multiplex.pt
+     - depends on precision
+     - depends on precision
+     - 3.5G
+     - yes
+     - no
 
-.. tip:: If you are running ISAT on a cpu, it is recommended to use the **sam_hq_vit_tiny.pth** or **mobile_sam.pt** model.
+.. tip:: If you are running IVAS on a CPU, it is recommended to use the **sam_hq_vit_tiny.pth** or **mobile_sam.pt** model.
 
 .. tip:: Since v1.5.1, you can try disabling the ``video segmentation`` feature in the settings interface if you encounter insufficient VRAM.
 
          After disabling the ``video segmentation`` feature, SAM3 requires only 6GB of VRAM to run.
+
+.. important:: SAM 3.1 supports ``Original checkpoint dtype``, BF16, FP16, and
+               FP32 in this integration. ``Original`` detects the checkpoint's
+               stored tensor dtype; it does not use the filename. Official
+               ``sam3.1_multiplex.pt`` checkpoints and compatible bare detector
+               checkpoints are loaded with strict key and shape validation.
+
+.. attention:: The current SAM 3.1 adapter provides image detection and
+               text-guided segmentation. Bare detector checkpoints do not
+               contain tracker weights, so SAM 3.1 video segmentation is
+               deliberately disabled rather than silently loading an
+               incomplete model.
 
 4. Use fine tuned model
 ---------------------------------
@@ -202,4 +221,4 @@ Click the ``Open`` button in the the model manager interface to select the fine-
 .. image:: ../../display/use_fine_tuned_model.png
     :alt: use_fine_tuned_model.png
 
-.. important:: The supported fine-tuned models: **sam**, **sam2**, **sam2.1**, **sam3**, **mobile-sam**, **edge-sam**, **sam-hq** and **sam-med2d**.
+.. important:: The supported fine-tuned models: **sam**, **sam2**, **sam2.1**, **sam3**, **sam3.1**, **mobile-sam**, **edge-sam**, **sam-hq** and **sam-med2d**.

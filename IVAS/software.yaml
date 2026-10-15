@@ -1,0 +1,200 @@
+label:
+- color: '#000000'
+  name: __background__
+- color: '#ef2929'
+  name: AuxiliaryHook
+- color: '#fcaf3e'
+  name: Biomarker
+- color: '#fce94f'
+  name: Cannula
+- color: '#8ae234'
+  name: CapsulorhexisCystotome
+- color: '#729fcf'
+  name: CapsulorhexisForceps
+- color: '#ad7fa8'
+  name: Cautery
+- color: '#e9b96e'
+  name: ConjunctivalScissors
+- color: '#a40000'
+  name: Cornea
+- color: '#5c3566'
+  name: CrescentBlade
+- color: '#204a87'
+  name: Forceps
+- color: '#00bcd4'
+  name: IrrigationAspirationHandpiece
+- color: '#ff69b4'
+  name: LensInjector
+- color: '#ff7f50'
+  name: MainIncisionKnife
+- color: '#008080'
+  name: Marker
+- color: '#b8860b'
+  name: MendezRing
+- color: '#7b68ee'
+  name: NeedleHolder
+- color: '#00ff7f'
+  name: PhacoemulsificationHandpiece
+- color: '#dc143c'
+  name: SideIncisionKnife
+- color: '#4682b4'
+  name: Spatula
+- color: '#ff00ff'
+  name: SutureNeedle
+- color: '#a0522d'
+  name: VannasScissors
+- color: '#9acd32'
+  name: Vectis
+- color: '#ff1493'
+  name: VitrectomyHandpiece
+- color: '#c0c0c0'
+  name: WaterSprayer
+shortcut:
+  actionAbout:
+    default_key: ''
+    key: ''
+  actionAnno_validator:
+    default_key: ''
+    key: ''
+  actionAuto_segment_with_bounding_box:
+    default_key: ''
+    key: ''
+  actionBackspace:
+    default_key: Z
+    key: Z
+  actionBit_map:
+    default_key: Space
+    key: Space
+  actionCancel:
+    default_key: Esc
+    key: Esc
+  actionConverter:
+    default_key: ''
+    key: ''
+  actionCopy:
+    default_key: Ctrl+C
+    key: Ctrl+C
+  actionDelete:
+    default_key: Del
+    key: Del
+  actionEdit:
+    default_key: ''
+    key: ''
+  actionExclude:
+    default_key: Ctrl+E
+    key: Ctrl+E
+  actionExit:
+    default_key: ''
+    key: ''
+  actionFinish:
+    default_key: E
+    key: E
+  actionFit_window:
+    default_key: F
+    key: F
+  actionImages_dir:
+    default_key: ''
+    key: ''
+  actionIntersect:
+    default_key: Ctrl+Q
+    key: Ctrl+Q
+  actionLabel_dir:
+    default_key: ''
+    key: ''
+  actionLanguage:
+    default_key: ''
+    key: ''
+  actionModel_manage:
+    default_key: ''
+    key: ''
+  actionNext_group:
+    default_key: Tab
+    key: Tab
+  actionNext_image:
+    default_key: D
+    key: D
+  actionPolygon:
+    default_key: C
+    key: C
+  actionPrev_group:
+    default_key: '`'
+    key: '`'
+  actionPrev_image:
+    default_key: A
+    key: A
+  actionRepaint:
+    default_key: R
+    key: R
+  actionSave:
+    default_key: Ctrl+S
+    key: Ctrl+S
+  actionScene_shot:
+    default_key: P
+    key: P
+  actionSegment_anything_box:
+    default_key: W
+    key: W
+  actionSegment_anything_point:
+    default_key: Q
+    key: Q
+  actionSetting:
+    default_key: ''
+    key: ''
+  actionShortcut:
+    default_key: ''
+    key: ''
+  actionSubtract:
+    default_key: Ctrl+D
+    key: Ctrl+D
+  actionTo_bottom:
+    default_key: B
+    key: B
+  actionTo_top:
+    default_key: T
+    key: T
+  actionUnion:
+    default_key: Ctrl+A
+    key: Ctrl+A
+  actionVideo_segment:
+    default_key: ''
+    key: ''
+  actionVideo_segment_five_times:
+    default_key: ''
+    key: ''
+  actionVideo_segment_once:
+    default_key: ''
+    key: ''
+  actionVideo_to_frames:
+    default_key: ''
+    key: ''
+  actionVisible:
+    default_key: V
+    key: V
+  actionWindow_shot:
+    default_key: Ctrl+P
+    key: Ctrl+P
+  actionZoom_in:
+    default_key: ''
+    key: ''
+  actionZoom_out:
+    default_key: ''
+    key: ''
+software:
+  auto_save: false
+  contour_method: SIMPLE
+  contour_mode: external
+  create_mode_invisible_polygon: true
+  current_converter: coco
+  language: en
+  mask_alpha: 0.6
+  polygon_alpha_hover: 0.6
+  polygon_alpha_no_hover: 0.3
+  real_time_area: false
+  sam_precision: float32
+  show_edge: true
+  show_prompt: true
+  use_bfloat16: false
+  use_polydp: true
+  use_video_segmentation: true
+  vertex_size: 1
+  video_output_root: ''

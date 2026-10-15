@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# @Author  : LG
+# @Maintainer: zack zhao
 
 from PIL import Image
 from segment_any.segment_any import SegAny
@@ -58,7 +58,7 @@ class Annotation:
         label_path (str): The path to the label file.
 
     Attributes:
-        description (str): Always 'ISAT'.
+        description (str): 'IVAS' for new files; legacy 'IVAS' is accepted.
         img_folder (str): The path to the folder where the images are located.
         img_name (str): The name of the image.
         label_path (str): The path to the label file.
@@ -70,7 +70,7 @@ class Annotation:
 
     def __init__(self, image_path: str, label_path: str):
         img_folder, img_name = os.path.split(image_path)
-        self.description = "ISAT"
+        self.description = "IVAS"
         self.img_folder = img_folder
         self.img_name = img_name
         self.label_path = label_path
@@ -100,8 +100,8 @@ class Annotation:
                 dataset = load(f)
                 info = dataset.get("info", {})
                 description = info.get("description", "")
-                if description == "ISAT":
-                    # ISAT格式json
+                if description in {"IVAS", "IVAS"}:
+                    # IVAS JSON（兼容旧 IVAS 标识）
                     objects = dataset.get("objects", [])
                     self.img_name = info.get("name", "")
                     width = info.get("width", None)
@@ -142,9 +142,9 @@ class Annotation:
                         )
                         self.objects.append(obj)
                 else:
-                    # 不再支持直接打开labelme标注文件（在菜单栏-tool-convert中提供了isat<->labelme相互转换工具）
+                    # 不再支持直接打开 LabelMe 标注文件（请使用菜单栏中的 IVAS/LabelMe 转换工具）。
                     print(
-                        "Warning: The file {} is not a ISAT json.".format(
+                        "Warning: The file {} is not an IVAS JSON.".format(
                             self.label_path
                         )
                     )
@@ -212,7 +212,7 @@ def mask_to_polygon(mask: np.ndarray):
     return contours, hierarchy
 
 
-def text_prompt_and_save_to_isat_json(segany, prompts, images_root):
+def text_prompt_and_save_to_ivas_json(segany, prompts, images_root):
     images_root = Path(images_root)
     image_paths = list(images_root.glob("*.jpg"))
     bar = tqdm(image_paths)
@@ -258,7 +258,7 @@ def text_prompt_and_save_to_isat_json(segany, prompts, images_root):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(
-        description="使用文本提示词调用SAM3模型，对图片目录中的图片进行自动分割，生成ISAT格式的标注JSON文件。",
+        description="使用文本提示词调用SAM3模型，对图片目录中的图片进行自动分割，生成IVAS格式的标注JSON文件。",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
@@ -279,5 +279,5 @@ if __name__ == '__main__':
 
     segany = SegAny(args.checkpoint, use_bfloat16=False)
 
-    text_prompt_and_save_to_isat_json(segany, args.prompts, args.image_root)
+    text_prompt_and_save_to_ivas_json(segany, args.prompts, args.image_root)
 

@@ -1,8 +1,8 @@
 Installation
 ====================================
 
-Option 1: Install with Pip
-------------------------------------
+Option 1: Install from a source checkout
+-----------------------------------------
 
 1.  Create a new environment (recommended, optional)
 
@@ -10,19 +10,19 @@ Option 1: Install with Pip
 
     .. code-block:: bash
 
-       conda create -n isat_env python=3.10
+       conda create -n ivas_env python=3.10
 
     activate new environment
 
     .. code-block:: bash
 
-        conda activate isat_env
+        conda activate ivas_env
 
-2.  Install ISAT-SAM using pip
+2.  Change into the IVAS source directory and install the local package
 
     .. code-block:: bash
 
-        pip install isat-sam
+        pip install .
 
     .. attention::
 
@@ -34,27 +34,19 @@ Option 1: Install with Pip
 
     .. code-block:: bash
 
-        isat-sam
+        ivas
 
-.. hint:: Recommended install isat-sam using pip
+.. hint:: This installs the source tree you received; it does not assume that
+          an ``ivas-sam`` package has already been published to PyPI.
 
-Option 2: Install from Source Code
+Option 2: Run directly from source
 ------------------------------------
 
-1.  Get source code from github
+1.  Obtain the source tree
 
-    Use git clone project and then into project
-
-    .. code-block:: bash
-
-        git clone https://github.com/yatengLG/ISAT_with_segment_anything.git
-        cd ISAT_with_segment_anything
-
-    Or download zip from `Github <https://github.com/yatengLG/ISAT_with_segment_anything/archive/refs/heads/master.zip>`_ , unzip and into project
-
-    .. code-block:: bash
-
-        cd ISAT_with_segment_anything-master
+    Use the source archive or repository address supplied with your IVAS
+    distribution, then change into its root directory. This documentation does
+    not hard-code an upstream repository as the current IVAS support channel.
 
 2.  Create a new environment (recommended, optional)
 
@@ -62,13 +54,13 @@ Option 2: Install from Source Code
 
     .. code-block:: bash
 
-        conda create -n isat_env python=3.10
+        conda create -n ivas_env python=3.10
 
     activate new environment
 
     .. code-block:: bash
 
-        conda activate isat_env
+        conda activate ivas_env
 
 3.  Install dependencies
 
@@ -92,8 +84,8 @@ Option 2: Install from Source Code
 
     .. code-block:: bash
 
-        # install isat as a package
-        python setup.py install
-        # run
-        isat-sam
+        # install the current source tree as a package
+        pip install .
+        # run the installed command
+        ivas
 

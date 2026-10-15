@@ -1,0 +1,51 @@
+ label:
+  - color: '#000000'
+    name: 背景
+  - color: '#ef2929'
+    name: 辅助钩
+  - color: '#fcaf3e'
+    name: 生物标记器
+  - color: '#fce94f'
+    name: 套管
+  - color: '#8ae234'
+    name: 撕囊针
+  - color: '#729fcf'
+    name: 撕囊镊
+  - color: '#ad7fa8'
+    name: 电凝器
+  - color: '#e9b96e'
+    name: 结膜剪
+  - color: '#a40000'
+    name: 角膜
+  - color: '#5c3566'
+    name: 新月形刀
+  - color: '#204a87'
+    name: 镊子
+  - color: '#00bcd4'
+    name: 灌注抽吸手柄
+  - color: '#ff69b4'
+    name: 人工晶状体植入器
+  - color: '#ff7f50'
+    name: 主切口刀
+  - color: '#008080'
+    name: 标记器
+  - color: '#b8860b'
+    name: 门德斯角度标记环
+  - color: '#7b68ee'
+    name: 持针器
+  - color: '#00ff7f'
+    name: 超声乳化手柄
+  - color: '#dc143c'
+    name: 侧切口刀
+  - color: '#4682b4'
+    name: 调位铲
+  - color: '#ff00ff'
+    name: 缝合针
+  - color: '#a0522d'
+    name: Vannas显微剪
+  - color: '#9acd32'
+    name: 晶状体匙
+  - color: '#ff1493'
+    name: 玻璃体切割手柄
+  - color: '#c0c0c0'
+    name: 冲洗器

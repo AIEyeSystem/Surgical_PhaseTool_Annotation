@@ -27,10 +27,20 @@ Reduce the number of polygon vertics when genetating polygons from masks.
 .. tip::
         Applies after ``Contour Method``.
 
-1.2 Use Bfloat16
+1.2 SAM Precision
 ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 
-Run sam on bfloat16 for smaller GPU memory footprint.
+Choose how SAM floating tensors are loaded:
+
+- ``Original checkpoint dtype`` preserves the actual tensor dtype stored in the
+  checkpoint. It does not infer precision from the filename.
+- ``BFloat16 (BF16)`` reduces memory use while keeping a wider exponent range.
+- ``Float16 (FP16)`` reduces memory use on compatible GPUs.
+- ``Float32 (FP32)`` uses full single precision and requires more memory.
+
+Complex and integer buffers are preserved when an explicit floating precision
+is selected. Changing this setting takes effect the next time the model is
+loaded.
 
 1.3 Use Video Segmentation
 ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-# @Author  : LG
+# @Maintainer: zack zhao
 
-from ISAT.segment_any.segment_any import SegAny
+from IVAS.segment_any.segment_any import SegAny
 from matplotlib import pyplot as plt
 import numpy as np
 import cv2
@@ -64,7 +64,7 @@ images = {0: {'path': '../example/images/000000000113.jpg',
 if __name__ == '__main__':
     result_path = 'result/'
     os.makedirs(result_path, exist_ok=True)
-    checkpoint_root = '../ISAT/checkpoints'
+    checkpoint_root = '../IVAS/checkpoints'
     record = {}
 
     for checkpoint in os.listdir(checkpoint_root):

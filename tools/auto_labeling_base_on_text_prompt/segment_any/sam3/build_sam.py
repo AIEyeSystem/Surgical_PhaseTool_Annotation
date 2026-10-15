@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# @Author  : LG
+# @Maintainer: zack zhao
 
 from .model_builder import build_sam3_image_model, build_sam3_video_model
 from .model.sam3_image_processor import Sam3Processor

@@ -1,12 +1,15 @@
-Welcome to ISAT-SAM's documentation!
-====================================
+Welcome to IVAS's documentation!
+================================
 
-**ISAT-SAM** stands for Interactive Semi-Automatic Annotation Tool with `Segment Anything Model <https://github.com/facebookresearch/segment-anything>`_
+**IVAS** is a visual annotation toolkit powered by `Segment Anything Model <https://github.com/facebookresearch/segment-anything>`_.
 
-You can `access the project <https://github.com/yatengLG/ISAT_with_segment_anything>`_ on GitHub and view the source code.
+IVAS is maintained by zack zhao. Use the support channel supplied with your
+distribution for current source, releases, and feedback.
 
-.. image:: ../../display/software.gif
-    :alt: software.gif
+.. image:: ../../logo/logo.png
+    :alt: IVAS logo
+    :width: 180px
+    :align: center
 
 Features
 ====================================
@@ -18,7 +21,8 @@ Features
 - Supports `Segment anything model <https://github.com/facebookresearch/segment-anything>`_ with ``point prompt`` and ``box prompt`` to semi-automatic annotation.
 - Supports ``text prompt`` and ``visual prompt`` based on sam3.
 - Supports using remote server for SAM encoding.
-- Supports ``video annotation``.
+- Supports unified ``video annotation`` with temporal labels, staged tracking,
+  review, transactional commit, and rollback.
 - Supports plugin extensions.
 
 Contents

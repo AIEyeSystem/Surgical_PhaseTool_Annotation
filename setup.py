@@ -1,30 +1,28 @@
-# @Author  : LG
+# @Maintainer: zack zhao
 
 from setuptools import find_packages, setup
 
 
 def get_version():
     try:
-        from ISAT.__init__ import __version__
+        from IVAS.__init__ import __version__
 
         return __version__
 
     except ImportError:
-        raise ImportError("ISAT/__init__.py not found, cannot determine version.")
+        raise ImportError("IVAS/__init__.py not found, cannot determine version.")
 
 
 with open("README.md", encoding="utf-8") as f:
     long_description = f.read()
 
 setup(
-    name="isat-sam",  # 包名
+    name="ivas-sam",  # 包名
     version=get_version(),  # 版本号
-    author="yatengLG",
-    author_email="yatenglg@foxmail.com",
-    description="Interactive semi-automatic annotation tool for image segmentation based on SAM(segment anything model).",
+    author="zack zhao",
+    description="IVAS visual annotation workbench for image segmentation and temporal video annotation powered by SAM.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/yatengLG/ISAT_with_segment_anything",  # 项目相关文件地址
     keywords=[
         "annotation tool",
         "segment anything",
@@ -43,6 +41,7 @@ setup(
         "opencv_python_headless",
         "pillow",
         "pyqt5",
+        "python-vlc>=3.0.21203",
         "pyyaml",
         "torch>=2.3.0",
         "torchvision",
@@ -74,11 +73,16 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
     ],
     entry_points={
         "console_scripts": [
-            "isat-sam=ISAT.main:main",
+            "ivas-sam=IVAS.main:main",
+            "ivas=IVAS.main:main",
+            "ivat-sam=IVAS.main:main",
+            "ivat=IVAS.main:main",
         ],
-        "isat.plugins": [],  # 插件注册
+        "ivas.plugins": [],  # IVAS plugin registration
+        "ivat.plugins": [],  # Previous product name
     },
 )

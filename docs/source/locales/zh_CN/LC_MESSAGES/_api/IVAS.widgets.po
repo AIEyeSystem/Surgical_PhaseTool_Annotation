@@ -1,0 +1,1831 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, zack zhao
+# This file is distributed under the same license as the IVAS package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: IVAS \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-12-31 14:08+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../source/_api/IVAS.widgets.rst:2
+msgid "IVAS.widgets package"
+msgstr ""
+
+#: ../../source/_api/IVAS.widgets.rst:5
+msgid "Submodules"
+msgstr ""
+
+#: ../../source/_api/IVAS.widgets.rst:8
+msgid "IVAS.widgets.about\\_dialog module"
+msgstr ""
+
+#: IVAS.widgets.about_dialog.AboutDialog:1 of
+msgid ""
+"Bases: :py:class:`~PyQt5.QtWidgets.QDialog`, "
+":py:class:`~IVAS.ui.about_dialog.Ui_Dialog`"
+msgstr ""
+
+#: ../../source/_api/IVAS.widgets.rst:16
+msgid "IVAS.widgets.annos\\_dock\\_widget module"
+msgstr ""
+
+#: IVAS.widgets.annos_dock_widget.AnnosDockWidget:1 of
+msgid ""
+"Bases: :py:class:`~PyQt5.QtWidgets.QWidget`, "
+":py:class:`~IVAS.ui.anno_dock.Ui_Form`"
+msgstr ""
+
+#: IVAS.widgets.annos_dock_widget.AnnosDockWidget:1 of
+msgid "Annotations dock widget."
+msgstr ""
+
+#: IVAS.widgets.annos_dock_widget.AnnosDockWidget:5 of
+msgid "main window"
+msgstr ""
+
+#: IVAS.widgets.annos_dock_widget.AnnosDockWidget
+#: IVAS.widgets.canvas.AnnotationScene
+#: IVAS.widgets.mainwindow.CheckLatestVersionThread
+#: IVAS.widgets.mainwindow.InitSegAnyThread IVAS.widgets.mainwindow.MainWindow
+#: IVAS.widgets.mainwindow.SegAnyThread
+#: IVAS.widgets.mainwindow.SegAnyVideoThread
+#: IVAS.widgets.model_manager_dialog.DownloadThread
+#: IVAS.widgets.polygon.Polygon of
+msgid "type"
+msgstr ""
+
+#: IVAS.widgets.annos_dock_widget.AnnosDockWidget:7 of
+msgid "IVAS.widgets.mainwindow.MainWindow"
+msgstr ""
+
+#: IVAS.widgets.annos_dock_widget.AnnosDockWidget:11 of
+#, python-brace-format
+msgid "polygon and QListWidgetItem dict. {polygon: item}"
+msgstr ""
+
+#: IVAS.widgets.annos_dock_widget.AnnosDockWidget:13
+#: IVAS.widgets.mainwindow.SegAnyThread:16 of
+msgid "dict"
+msgstr ""
+
+#: IVAS.widgets.annos_dock_widget.AnnosDockWidget.generate_item_and_itemwidget:1
+#: of
+msgid "The item of annotations list widget."
+msgstr ""
+
+#: IVAS.widgets.annos_dock_widget.AnnosDockWidget.generate_item_and_itemwidget
+#: IVAS.widgets.annos_dock_widget.AnnosDockWidget.listwidget_add_polygon
+#: IVAS.widgets.annos_dock_widget.AnnosDockWidget.listwidget_remove_polygon
+#: IVAS.widgets.annos_dock_widget.AnnosDockWidget.set_all_polygon_visible
+#: IVAS.widgets.annos_dock_widget.AnnosDockWidget.set_polygon_show
+#: IVAS.widgets.annos_dock_widget.AnnosDockWidget.set_selected
+#: IVAS.widgets.canvas.AnnotationScene
+#: IVAS.widgets.canvas.AnnotationScene.load_image
+#: IVAS.widgets.canvas.AnnotationScene.mouseMoveEvent
+#: IVAS.widgets.canvas.AnnotationScene.mousePressEvent
+#: IVAS.widgets.canvas.AnnotationScene.mouseReleaseEvent
+#: IVAS.widgets.canvas.AnnotationScene.start_segment_anything_visual
+#: IVAS.widgets.canvas.AnnotationView.wheelEvent
+#: IVAS.widgets.category_dock_widget.CategoriesDockWidget.item_choice
+#: IVAS.widgets.category_dock_widget.CategoriesDockWidget.radio_choice
+#: IVAS.widgets.category_dock_widget.CategoriesDockWidget.update_current_group
+#: IVAS.widgets.category_edit_dialog.CategoryEditDialog.closeEvent
+#: IVAS.widgets.category_edit_dialog.CategoryEditDialog.get_category
+#: IVAS.widgets.category_setting_dialog.CategorySettingDialog.get_item_and_widget
+#: IVAS.widgets.mainwindow.CheckLatestVersionThread
+#: IVAS.widgets.mainwindow.InitSegAnyThread
+#: IVAS.widgets.mainwindow.MainWindow.change_approx_polygon_state
+#: IVAS.widgets.mainwindow.MainWindow.change_auto_save_state
+#: IVAS.widgets.mainwindow.MainWindow.change_bfloat16_state
+#: IVAS.widgets.mainwindow.MainWindow.change_contour_method
+#: IVAS.widgets.mainwindow.MainWindow.change_contour_mode
+#: IVAS.widgets.mainwindow.MainWindow.change_create_mode_invisible_polygon_state
+#: IVAS.widgets.mainwindow.MainWindow.change_edge_state
+#: IVAS.widgets.mainwindow.MainWindow.change_mask_alpha
+#: IVAS.widgets.mainwindow.MainWindow.change_polygon_alpha_hover
+#: IVAS.widgets.mainwindow.MainWindow.change_polygon_alpha_no_hover
+#: IVAS.widgets.mainwindow.MainWindow.change_prompt_visiable
+#: IVAS.widgets.mainwindow.MainWindow.change_real_time_area_state
+#: IVAS.widgets.mainwindow.MainWindow.change_saturation
+#: IVAS.widgets.mainwindow.MainWindow.change_use_video_segmentation_state
+#: IVAS.widgets.mainwindow.MainWindow.change_vertex_size
+#: IVAS.widgets.mainwindow.MainWindow.closeEvent
+#: IVAS.widgets.mainwindow.MainWindow.init_sam_finish
+#: IVAS.widgets.mainwindow.MainWindow.init_segment_anything
+#: IVAS.widgets.mainwindow.MainWindow.jump_to
+#: IVAS.widgets.mainwindow.MainWindow.latest_version_tip
+#: IVAS.widgets.mainwindow.MainWindow.load_actions_shortcut
+#: IVAS.widgets.mainwindow.MainWindow.mask_to_polygon
+#: IVAS.widgets.mainwindow.MainWindow.predict_current_image_with_text_prompt
+#: IVAS.widgets.mainwindow.MainWindow.predict_current_image_with_visual_prompt
+#: IVAS.widgets.mainwindow.MainWindow.sam_encoder_finish
+#: IVAS.widgets.mainwindow.MainWindow.save_cfg
+#: IVAS.widgets.mainwindow.MainWindow.screen_shot
+#: IVAS.widgets.mainwindow.MainWindow.seg_video_finish
+#: IVAS.widgets.mainwindow.MainWindow.seg_video_start
+#: IVAS.widgets.mainwindow.MainWindow.set_labels_visible
+#: IVAS.widgets.mainwindow.MainWindow.set_saved_state
+#: IVAS.widgets.mainwindow.MainWindow.show_image
+#: IVAS.widgets.mainwindow.MainWindow.statusbar_change_status
+#: IVAS.widgets.mainwindow.MainWindow.translate
+#: IVAS.widgets.mainwindow.SegAnyThread
+#: IVAS.widgets.mainwindow.SegAnyThread.sam_encoder
+#: IVAS.widgets.mainwindow.SegAnyVideoThread
+#: IVAS.widgets.mainwindow.calculate_area
+#: IVAS.widgets.model_manager_dialog.ModelManagerDialog.download_process
+#: IVAS.widgets.plugin_base.PluginBase.after_sam_encode_finished_event
+#: IVAS.widgets.plugin_base.PluginBase.before_image_open_event
+#: IVAS.widgets.plugin_base.PluginBase.on_mouse_move_event
+#: IVAS.widgets.plugin_base.PluginBase.on_mouse_press_event
+#: IVAS.widgets.plugin_base.PluginBase.on_mouse_pressed_and_mouse_move_event
+#: IVAS.widgets.plugin_base.PluginBase.on_mouse_release_event
+#: IVAS.widgets.plugin_manager_dialog.PluginManagerDialog.trigger_after_sam_encode_finished
+#: IVAS.widgets.plugin_manager_dialog.PluginManagerDialog.trigger_on_mouse_move
+#: IVAS.widgets.plugin_manager_dialog.PluginManagerDialog.trigger_on_mouse_press
+#: IVAS.widgets.plugin_manager_dialog.PluginManagerDialog.trigger_on_mouse_pressed_and_mouse_move
+#: IVAS.widgets.plugin_manager_dialog.PluginManagerDialog.trigger_on_mouse_release
+#: IVAS.widgets.polygon.LineVertex.itemChange
+#: IVAS.widgets.polygon.Polygon.addPoint
+#: IVAS.widgets.polygon.Polygon.change_color
+#: IVAS.widgets.polygon.Polygon.hoverEnterEvent
+#: IVAS.widgets.polygon.Polygon.hoverLeaveEvent
+#: IVAS.widgets.polygon.Polygon.itemChange
+#: IVAS.widgets.polygon.Polygon.load_object
+#: IVAS.widgets.polygon.Polygon.mouseDoubleClickEvent
+#: IVAS.widgets.polygon.Polygon.movePoint
+#: IVAS.widgets.polygon.Polygon.moveVertex
+#: IVAS.widgets.polygon.Polygon.removePoint
+#: IVAS.widgets.polygon.Polygon.set_drawed
+#: IVAS.widgets.polygon.RectVertex.itemChange
+#: IVAS.widgets.polygon.Vertex.hoverEnterEvent
+#: IVAS.widgets.polygon.Vertex.hoverLeaveEvent
+#: IVAS.widgets.polygon.Vertex.itemChange of
+msgid "Parameters"
+msgstr ""
+
+#: IVAS.widgets.annos_dock_widget.AnnosDockWidget.generate_item_and_itemwidget:3
+#: IVAS.widgets.annos_dock_widget.AnnosDockWidget.listwidget_add_polygon:3
+#: IVAS.widgets.annos_dock_widget.AnnosDockWidget.listwidget_remove_polygon:3
+#: IVAS.widgets.annos_dock_widget.AnnosDockWidget.set_polygon_show:3 of
+msgid "polygon"
+msgstr ""
+
+#: IVAS.widgets.annos_dock_widget.AnnosDockWidget.generate_item_and_itemwidget
+#: IVAS.widgets.category_setting_dialog.CategorySettingDialog.get_item_and_widget
+#: IVAS.widgets.mainwindow.calculate_area
+#: IVAS.widgets.plugin_base.PluginBase.get_plugin_author
+#: IVAS.widgets.plugin_base.PluginBase.get_plugin_description
+#: IVAS.widgets.plugin_base.PluginBase.get_plugin_name
+#: IVAS.widgets.plugin_base.PluginBase.get_plugin_version
+#: IVAS.widgets.polygon.Polygon.calculate_area
+#: IVAS.widgets.polygon.Polygon.to_object of
+msgid "Return type"
+msgstr ""
+
+#: IVAS.widgets.annos_dock_widget.AnnosDockWidget.update_listwidget:1 of
+msgid "Update the annotations list widget."
+msgstr ""
+
+#: IVAS.widgets.annos_dock_widget.AnnosDockWidget.listwidget_add_polygon:1 of
+msgid "Add a new item to the list widget."
+msgstr ""
+
+#: IVAS.widgets.annos_dock_widget.AnnosDockWidget.listwidget_remove_polygon:1
+#: of
+msgid "Remove a item from the list widget."
+msgstr ""
+
+#: IVAS.widgets.annos_dock_widget.AnnosDockWidget.set_selected:1 of
+msgid "Set item selected."
+msgstr ""
+
+#: IVAS.widgets.annos_dock_widget.AnnosDockWidget.set_polygon_selected:1 of
+msgid "Set polygon selected on canvas."
+msgstr ""
+
+#: IVAS.widgets.annos_dock_widget.AnnosDockWidget.set_polygon_show:1 of
+msgid "Set polygon visible."
+msgstr ""
+
+#: IVAS.widgets.annos_dock_widget.AnnosDockWidget.set_all_polygon_visible:1 of
+msgid "Set all polygon visible."
+msgstr ""
+
+#: IVAS.widgets.annos_dock_widget.AnnosDockWidget.set_all_polygon_visible:3 of
+msgid "visible flag"
+msgstr ""
+
+#: IVAS.widgets.annos_dock_widget.AnnosDockWidget.set_group_polygon_visible:1
+#: of
+msgid "Set group polygon visible."
+msgstr ""
+
+#: IVAS.widgets.annos_dock_widget.AnnosDockWidget.set_group_polygon_visible:3
+#: of
+msgid "The group is self.comboBox_group_select.currentText()"
+msgstr ""
+
+#: IVAS.widgets.annos_dock_widget.AnnosDockWidget.zoom_to_group:1 of
+msgid "Zoom to suitable size of group."
+msgstr ""
+
+#: IVAS.widgets.annos_dock_widget.AnnosDockWidget.go_to_next_group:1 of
+msgid "Show next group."
+msgstr ""
+
+#: IVAS.widgets.annos_dock_widget.AnnosDockWidget.go_to_prev_group:1 of
+msgid "Show previous group."
+msgstr ""
+
+#: ../../source/_api/IVAS.widgets.rst:24
+msgid "IVAS.widgets.annos\\_validator\\_dialog module"
+msgstr ""
+
+#: IVAS.widgets.annos_validator_dialog.AnnosValidatorDialog:1 of
+msgid ""
+"Bases: :py:class:`~PyQt5.QtWidgets.QDialog`, "
+":py:class:`~IVAS.ui.annos_validator.Ui_Dialog`"
+msgstr ""
+
+#: ../../source/_api/IVAS.widgets.rst:32
+msgid "IVAS.widgets.auto\\_segment\\_dialog module"
+msgstr ""
+
+#: IVAS.widgets.auto_segment_dialog.AutoSegmentThread:1
+#: IVAS.widgets.mainwindow.CheckLatestVersionThread:1
+#: IVAS.widgets.mainwindow.InitSegAnyThread:1
+#: IVAS.widgets.mainwindow.SegAnyThread:1
+#: IVAS.widgets.mainwindow.SegAnyVideoThread:1
+#: IVAS.widgets.model_manager_dialog.DownloadThread:1 of
+msgid "Bases: :py:class:`~PyQt5.QtCore.QThread`"
+msgstr ""
+
+#: IVAS.widgets.auto_segment_dialog.AutoSegmentDialog:1 of
+msgid ""
+"Bases: :py:class:`~PyQt5.QtWidgets.QDialog`, "
+":py:class:`~IVAS.ui.auto_segment.Ui_Dialog`"
+msgstr ""
+
+#: ../../source/_api/IVAS.widgets.rst:40
+msgid "IVAS.widgets.canvas module"
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:1 of
+msgid "Bases: :py:class:`~PyQt5.QtWidgets.QGraphicsScene`"
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:1 of
+msgid "Annotation Scene."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:3 of
+msgid "IVAS main window"
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:8 of
+msgid "Image pixmap item."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:10
+#: IVAS.widgets.canvas.AnnotationScene:16 of
+msgid "QtWidgets.QGraphicsPixmapItem"
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:14 of
+msgid "SAM mask pixmap item."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:20 of
+msgid "Image data."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:22
+#: IVAS.widgets.canvas.AnnotationScene:82 IVAS.widgets.mainwindow.MainWindow:73
+#: of
+msgid "np.ndarray"
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:26 of
+msgid "The polygon being annotated."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:28 of
+msgid "Polygon"
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:32 of
+msgid "The box for SAM box prompt."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:34 of
+msgid "Rect"
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:38 of
+msgid "The line for repaint mode."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:40 of
+msgid "Line"
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:44 of
+msgid "STATUSMode. eg: CREATE, VIEW, EDIT, REPAINT."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:46 of
+msgid "STATUSMode"
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:50 of
+msgid "draw mode.eg:POLYGON, SEGMENTANYTHING_POINT, SEGMENTANYTHING_BOX"
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:52 of
+msgid "IVAS.configs.DRAWMode"
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:56 of
+msgid "The mode for convert sam mask to polygon."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:58 of
+msgid "CONTOURMode"
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:62 of
+msgid "The click points for sam point prompt."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:64
+#: IVAS.widgets.canvas.AnnotationScene:70
+#: IVAS.widgets.canvas.AnnotationScene:122
+#: IVAS.widgets.mainwindow.MainWindow:19 IVAS.widgets.mainwindow.MainWindow:67
+#: IVAS.widgets.model_manager_dialog.DownloadThread:7
+#: IVAS.widgets.polygon.Polygon:25 of
+msgid "list"
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:68 of
+msgid "The tag for sam point prompt."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:74 of
+msgid "The prompt points for sam point prompt."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:76 of
+msgid "list[PromptPoint, ...]"
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:80 of
+msgid "The mask output by sam model."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:86 of
+msgid "The alpha value for the mask."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:88
+#: IVAS.widgets.canvas.AnnotationScene:110 IVAS.widgets.polygon.Polygon:67 of
+msgid "float"
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:92
+#: IVAS.widgets.canvas.AnnotationScene:98 of
+msgid "The guideline."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:94
+#: IVAS.widgets.canvas.AnnotationScene:100 of
+msgid "QtWidgets.QGraphicsLineItem"
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:104 of
+msgid ""
+"Counter for the dragging annotation method, used by draw polygon and "
+"repaint."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:108 of
+msgid "Interval for the dragging annotation method."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:114 of
+msgid "The tag for mouse pressed."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:116
+#: IVAS.widgets.mainwindow.MainWindow:49 IVAS.widgets.mainwindow.MainWindow:55
+#: IVAS.widgets.mainwindow.MainWindow:61 IVAS.widgets.mainwindow.MainWindow:91
+#: IVAS.widgets.mainwindow.MainWindow:97 IVAS.widgets.mainwindow.MainWindow:103
+#: IVAS.widgets.mainwindow.MainWindow:109
+#: IVAS.widgets.model_manager_dialog.DownloadThread:19
+#: IVAS.widgets.polygon.Polygon:37 IVAS.widgets.polygon.Polygon:55 of
+msgid "bool"
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:120 of
+msgid "The list of polygons selected."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:126 of
+msgid "The start vertex for repaint."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:128
+#: IVAS.widgets.canvas.AnnotationScene:134
+#: IVAS.widgets.canvas.AnnotationScene:140 of
+msgid "Vertex"
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:132 of
+msgid "The end vertex for repaint."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene:138 of
+msgid "The hovered vertex for repaint."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene.load_image:1 of
+msgid "Load image."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene.load_image:3 of
+msgid "The image path."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene.load_image
+#: IVAS.widgets.category_setting_dialog.CategorySettingDialog.get_item_and_widget
+#: IVAS.widgets.mainwindow.calculate_area
+#: IVAS.widgets.plugin_base.PluginBase.get_plugin_author
+#: IVAS.widgets.plugin_base.PluginBase.get_plugin_description
+#: IVAS.widgets.plugin_base.PluginBase.get_plugin_name
+#: IVAS.widgets.plugin_base.PluginBase.get_plugin_version of
+msgid "Returns"
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene.unload_image:1 of
+msgid "Unload image and clear scene."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene.change_mode_to_create:1 of
+msgid "Change to create mode."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene.change_mode_to_view:1 of
+msgid "Change to view mode."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene.change_mode_to_edit:1 of
+msgid "Change to edit mode."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene.change_mode_to_repaint:1 of
+msgid "Change to repaint mode."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene.change_contour_mode_to_save_all:1 of
+msgid "Change to save all contour mode for convert mask to polygons."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene.change_contour_mode_to_save_max_only:1
+#: of
+msgid "Change to save max contour mode for convert mask to polygons."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene.change_contour_mode_to_save_external:1
+#: of
+msgid "Change to save external contour mode for convert mask to polygons."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene.start_segment_anything:1 of
+msgid "Start segmenting anything with point prompt."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene.start_segment_anything_box:1 of
+msgid "Start segmenting anything with box prompt."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene.start_segment_anything_visual:1 of
+msgid "Start segmenting anything with visual prompt."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene.start_draw_polygon:1 of
+msgid "Start drawing polygon."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene.start_draw:1 of
+msgid "Try change to create mode and add a empty polygon for annotation ops."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene.finish_draw:1 of
+msgid ""
+"Finish annotation. Convert mask to polygons when using sam, if the number"
+" of vertices less than 3, delete polygon."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene.cancel_draw:1 of
+msgid ""
+"Cancel draw. Remove the drawing polygons and masks, prompt points, prompt"
+" box eg."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene.delete_selected_graph:1 of
+msgid ""
+"Delete selected graph. Graph can be polygons or vertices, support "
+"multiple selection modes by pressing the CTRL key."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene.edit_polygon:1 of
+msgid ""
+"Edit the selected polygon. Open edit window then edit the attributes of "
+"the polygon."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene.move_polygon_to_top:1 of
+msgid "Move the selected polygon to top layer."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene.move_polygon_to_bottom:1 of
+msgid "Move the selected polygon to bottom layer."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene.copy_item:1 of
+msgid ""
+"Copy selected polygon. The copied polygon has the sam attributes with ori"
+" polygon."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene.polygons_union:1 of
+msgid ""
+"Union. Only support two polygons. Always use the attributes of the first "
+"polygon."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene.polygons_difference:1 of
+msgid ""
+"Subtract. Only support two polygons. Always use the attributes of the "
+"first polygon."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene.polygons_intersection:1 of
+msgid ""
+"Intersect. Only support two polygons. Always use the attributes of the "
+"first polygon."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene.polygons_symmetric_difference:1 of
+msgid ""
+"Exclude. Only support two polygons. Always use the attributes of the "
+"first polygon."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene.update_mask:1 of
+msgid "Update the mask output of sam."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationScene.backspace:1 of
+msgid "Backspace to the previous annotation state. Only work with create mode."
+msgstr ""
+
+#: IVAS.widgets.canvas.AnnotationView:1 of
+msgid "Bases: :py:class:`~PyQt5.QtWidgets.QGraphicsView`"
+msgstr ""
+
+#: ../../source/_api/IVAS.widgets.rst:48
+msgid "IVAS.widgets.category\\_dock\\_widget module"
+msgstr ""
+
+#: IVAS.widgets.category_dock_widget.CategoriesDockWidget:1 of
+msgid ""
+"Bases: :py:class:`~PyQt5.QtWidgets.QWidget`, "
+":py:class:`~IVAS.ui.category_dock.Ui_Form`"
+msgstr ""
+
+#: IVAS.widgets.category_dock_widget.CategoriesDockWidget.choice_category:1 of
+msgid "Shortcut function for category choice."
+msgstr ""
+
+#: IVAS.widgets.category_dock_widget.CategoriesDockWidget.update_widget:1 of
+msgid "Update list widget."
+msgstr ""
+
+#: IVAS.widgets.category_dock_widget.CategoriesDockWidget.radio_choice:1 of
+msgid "Triggered when radio button selected and set current category."
+msgstr ""
+
+#: IVAS.widgets.category_dock_widget.CategoriesDockWidget.radio_choice:3 of
+msgid "Index of list widget item."
+msgstr ""
+
+#: IVAS.widgets.category_dock_widget.CategoriesDockWidget.item_choice:1 of
+msgid ""
+"Triggered when an item in the category list is clicked.Will trigger radio"
+" button."
+msgstr ""
+
+#: IVAS.widgets.category_dock_widget.CategoriesDockWidget.item_choice:3 of
+msgid "Item to be checked."
+msgstr ""
+
+#: IVAS.widgets.category_dock_widget.CategoriesDockWidget.update_current_group:1
+#: of
+msgid "Update the current_group variable when the text in the QLineEdit changes."
+msgstr ""
+
+#: IVAS.widgets.category_dock_widget.CategoriesDockWidget.update_current_group:3
+#: of
+msgid "The text of QLineEdit."
+msgstr ""
+
+#: IVAS.widgets.category_dock_widget.CategoriesDockWidget.increase_current_group:1
+#: of
+msgid "Increase the current_group variable and update the QLineEdit text"
+msgstr ""
+
+#: IVAS.widgets.category_dock_widget.CategoriesDockWidget.decrease_current_group:1
+#: of
+msgid "Decrease the current_group variable and update the QLineEdit text"
+msgstr ""
+
+#: IVAS.widgets.category_dock_widget.CategoriesDockWidget.toggle_group_mode:1
+#: of
+msgid "Toggle group mode."
+msgstr ""
+
+#: IVAS.widgets.category_dock_widget.CategoriesDockWidget.toggle_group_mode:3
+#: of
+msgid "auto: Group id auto add 1 when add a new polygon."
+msgstr ""
+
+#: IVAS.widgets.category_dock_widget.CategoriesDockWidget.toggle_group_mode:4
+#: of
+msgid "manual: Manual set group id."
+msgstr ""
+
+#: IVAS.widgets.category_dock_widget.CategoriesDockWidget.toggle_group_mode:5
+#: of
+msgid ""
+"track: Group id changed with the group of current polygons when use [TAB]"
+" or [`] to check."
+msgstr ""
+
+#: ../../source/_api/IVAS.widgets.rst:56
+msgid "IVAS.widgets.category\\_edit\\_dialog module"
+msgstr ""
+
+#: IVAS.widgets.category_edit_dialog.CategoryEditDialog:1 of
+msgid ""
+"Bases: :py:class:`~PyQt5.QtWidgets.QDialog`, "
+":py:class:`~IVAS.ui.category_edit.Ui_Dialog`"
+msgstr ""
+
+#: IVAS.widgets.category_edit_dialog.CategoryEditDialog.load_cfg:1
+#: IVAS.widgets.category_setting_dialog.CategorySettingDialog.load_cfg:1 of
+msgid "Load the cfg and update the interface."
+msgstr ""
+
+#: IVAS.widgets.category_edit_dialog.CategoryEditDialog.get_category:1 of
+msgid "Triggered when category item selected."
+msgstr ""
+
+#: IVAS.widgets.category_edit_dialog.CategoryEditDialog.get_category:3 of
+msgid "category item."
+msgstr ""
+
+#: IVAS.widgets.category_edit_dialog.CategoryEditDialog.apply:1 of
+msgid "Set attributes of polygon."
+msgstr ""
+
+#: ../../source/_api/IVAS.widgets.rst:64
+msgid "IVAS.widgets.category\\_setting\\_dialog module"
+msgstr ""
+
+#: IVAS.widgets.category_setting_dialog.CategorySettingDialog:1 of
+msgid ""
+"Bases: :py:class:`~PyQt5.QtWidgets.QDialog`, "
+":py:class:`~IVAS.ui.category_setting_dialog.Ui_Dialog`"
+msgstr ""
+
+#: IVAS.widgets.category_setting_dialog.CategorySettingDialog.get_item_and_widget:1
+#: of
+msgid "Return item and item widget for given category and color."
+msgstr ""
+
+#: IVAS.widgets.category_setting_dialog.CategorySettingDialog.get_item_and_widget:3
+#: of
+msgid "category name"
+msgstr ""
+
+#: IVAS.widgets.category_setting_dialog.CategorySettingDialog.get_item_and_widget:4
+#: of
+msgid "color name"
+msgstr ""
+
+#: IVAS.widgets.category_setting_dialog.CategorySettingDialog.get_item_and_widget:6
+#: of
+msgid "The item of category list widget and the widget of the item."
+msgstr ""
+
+#: IVAS.widgets.category_setting_dialog.CategorySettingDialog.remove_category_item:1
+#: of
+msgid "Remove category item."
+msgstr ""
+
+#: IVAS.widgets.category_setting_dialog.CategorySettingDialog.add_new_category:1
+#: of
+msgid "Add a new category item."
+msgstr ""
+
+#: IVAS.widgets.category_setting_dialog.CategorySettingDialog.choice_color:1 of
+msgid "Triggered by color button. Select a new color for the category."
+msgstr ""
+
+#: IVAS.widgets.category_setting_dialog.CategorySettingDialog.import_cfg:1 of
+msgid "Import cfg from yaml file."
+msgstr ""
+
+#: IVAS.widgets.category_setting_dialog.CategorySettingDialog.export_cfg:1 of
+msgid "Export cfg to yaml file."
+msgstr ""
+
+#: IVAS.widgets.category_setting_dialog.CategorySettingDialog.apply:1 of
+msgid "Apply setting of categories."
+msgstr ""
+
+#: ../../source/_api/IVAS.widgets.rst:72
+msgid "IVAS.widgets.converter\\_dialog module"
+msgstr ""
+
+#: IVAS.widgets.converter_dialog.Converter:1 of
+msgid ""
+"Bases: :py:class:`~PyQt5.QtCore.QThread`, "
+":py:class:`~IVAS.formats.ivas.IVAS`"
+msgstr ""
+
+#: IVAS.widgets.converter_dialog.COCOConverter:1 of
+msgid ""
+"Bases: :py:class:`~IVAS.widgets.converter_dialog.Converter`, "
+":py:class:`~IVAS.formats.coco.COCO`"
+msgstr ""
+
+#: IVAS.widgets.converter_dialog.YOLOConverter:1 of
+msgid ""
+"Bases: :py:class:`~IVAS.widgets.converter_dialog.Converter`, "
+":py:class:`~IVAS.formats.yolo.YOLO`"
+msgstr ""
+
+#: IVAS.widgets.converter_dialog.LABELMEConverter:1 of
+msgid ""
+"Bases: :py:class:`~IVAS.widgets.converter_dialog.Converter`, "
+":py:class:`~IVAS.formats.labelme.LABELME`"
+msgstr ""
+
+#: IVAS.widgets.converter_dialog.VOCConverter:1 of
+msgid ""
+"Bases: :py:class:`~IVAS.widgets.converter_dialog.Converter`, "
+":py:class:`~IVAS.formats.voc.VOC`"
+msgstr ""
+
+#: IVAS.widgets.converter_dialog.VOCConverterForDetection:1 of
+msgid ""
+"Bases: :py:class:`~IVAS.widgets.converter_dialog.Converter`, "
+":py:class:`~IVAS.formats.voc_detection.VOCDetect`"
+msgstr ""
+
+#: IVAS.widgets.converter_dialog.ConverterDialog:1 of
+msgid ""
+"Bases: :py:class:`~PyQt5.QtWidgets.QDialog`, "
+":py:class:`~IVAS.ui.Converter_dialog.Ui_Dialog`"
+msgstr ""
+
+#: ../../source/_api/IVAS.widgets.rst:80
+msgid "IVAS.widgets.files\\_dock\\_widget module"
+msgstr ""
+
+#: IVAS.widgets.files_dock_widget.FilesDockWidget:1 of
+msgid ""
+"Bases: :py:class:`~PyQt5.QtWidgets.QWidget`, "
+":py:class:`~IVAS.ui.file_dock.Ui_Form`"
+msgstr ""
+
+#: IVAS.widgets.files_dock_widget.FilesDockWidget.update_widget:1 of
+msgid "Update the file list widget."
+msgstr ""
+
+#: IVAS.widgets.files_dock_widget.FilesDockWidget.set_select:1 of
+msgid "Set the current file highlight."
+msgstr ""
+
+#: IVAS.widgets.files_dock_widget.FilesDockWidget.listwidget_doubleclick:1 of
+msgid "Double-click the file list item to open the image."
+msgstr ""
+
+#: IVAS.widgets.files_dock_widget.FilesDockWidget.dropEvent:1 of
+msgid "Support drop event for open a image file or image directory."
+msgstr ""
+
+#: ../../source/_api/IVAS.widgets.rst:88
+msgid "IVAS.widgets.info\\_dock\\_widget module"
+msgstr ""
+
+#: IVAS.widgets.info_dock_widget.InfoDockWidget:1 of
+msgid ""
+"Bases: :py:class:`~PyQt5.QtWidgets.QWidget`, "
+":py:class:`~IVAS.ui.info_dock.Ui_Form`"
+msgstr ""
+
+#: IVAS.widgets.info_dock_widget.InfoDockWidget.note_changed:1 of
+msgid "Add a note for current image."
+msgstr ""
+
+#: IVAS.widgets.info_dock_widget.InfoDockWidget.update_widget:1 of
+msgid "Update the information dock widget."
+msgstr ""
+
+#: ../../source/_api/IVAS.widgets.rst:96
+msgid "IVAS.widgets.mainwindow module"
+msgstr ""
+
+#: IVAS.widgets.mainwindow.QtBoxStyleProgressBar:1 of
+msgid "Bases: :py:class:`~PyQt5.QtWidgets.QProgressBar`"
+msgstr ""
+
+#: IVAS.widgets.mainwindow.calculate_area:1 of
+msgid "Calculate the area of an array of points."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.calculate_area:3 of
+msgid "Vertices of polygon. [(x1, y1), (x2, y2), ...]"
+msgstr ""
+
+#: IVAS.widgets.mainwindow.calculate_area:5 IVAS.widgets.polygon.Polygon:65 of
+msgid "The area of the polygon."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.SegAnyThread:1 of
+msgid "Thread for encoder of the SAM model."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.CheckLatestVersionThread:3
+#: IVAS.widgets.mainwindow.InitSegAnyThread:3
+#: IVAS.widgets.mainwindow.SegAnyThread:3
+#: IVAS.widgets.mainwindow.SegAnyVideoThread:3 of
+msgid "Get attributes and functions from mainwindow."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.CheckLatestVersionThread:8
+#: IVAS.widgets.mainwindow.InitSegAnyThread:8
+#: IVAS.widgets.mainwindow.SegAnyThread:8
+#: IVAS.widgets.mainwindow.SegAnyVideoThread:8 of
+msgid "Signal."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.CheckLatestVersionThread:10
+#: IVAS.widgets.mainwindow.InitSegAnyThread:10
+#: IVAS.widgets.mainwindow.SegAnyThread:10
+#: IVAS.widgets.mainwindow.SegAnyVideoThread:10 of
+msgid "pyqtSignal"
+msgstr ""
+
+#: IVAS.widgets.mainwindow.SegAnyThread:14 of
+#, python-brace-format
+msgid ""
+"Dictionary of results. {image_index: {\"feature\": np.ndarray or tensor, "
+"...}, ...}"
+msgstr ""
+
+#: IVAS.widgets.mainwindow.SegAnyThread:20 of
+msgid "Current image index."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.SegAnyThread.sam_encoder:1 of
+msgid "SAM encoder."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.SegAnyThread.sam_encoder:3 of
+msgid "Image to be encoded."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.SegAnyVideoThread:1 of
+msgid "Thread for video segmentation of the SAM model."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.SegAnyVideoThread:14 of
+msgid "The index of the start frame of the video."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow:25 IVAS.widgets.mainwindow.MainWindow:31
+#: IVAS.widgets.mainwindow.SegAnyVideoThread:16
+#: IVAS.widgets.mainwindow.SegAnyVideoThread:22 IVAS.widgets.polygon.Polygon:7
+#: IVAS.widgets.polygon.Polygon:13 IVAS.widgets.polygon.Polygon:19
+#: IVAS.widgets.polygon.Polygon:49 of
+msgid "int"
+msgstr ""
+
+#: IVAS.widgets.mainwindow.SegAnyVideoThread:20 of
+msgid "The maximum number of frames to track."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.InitSegAnyThread:1 of
+msgid "Thread for init SAM model."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.InitSegAnyThread:14 of
+msgid "Checkpoint file path."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.CheckLatestVersionThread:1 of
+msgid "Thread for checking latest version."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow:1 of
+msgid ""
+"Bases: :py:class:`~PyQt5.QtWidgets.QMainWindow`, "
+":py:class:`~IVAS.ui.MainWindow.Ui_MainWindow`"
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow:1 of
+msgid "The main window of IVAS, also contains most of the core functions."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow:5 of
+msgid "Image root."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow:7 IVAS.widgets.mainwindow.MainWindow:13
+#: IVAS.widgets.mainwindow.MainWindow:37 IVAS.widgets.mainwindow.MainWindow:43
+#: IVAS.widgets.model_manager_dialog.DownloadThread:13
+#: IVAS.widgets.polygon.Polygon:43 IVAS.widgets.polygon.Polygon:61 of
+msgid "str"
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow:11 of
+msgid "Label root."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow:17 of
+msgid "List of images names."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow:23 of
+msgid "Current index for current image in files_list."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow:29 of
+msgid "Recode the current group. Default is 1."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow:35 of
+msgid "Categories config file path. Default is IVAS/ivas.yaml."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow:41 of
+msgid "Software config file path. Default is IVAS/software.yaml."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow:47 of
+msgid "The state of whether the annotations are written to disk."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow:53 of
+msgid ""
+"The state of whether the annotation can be annotated. The png image with "
+"palette be used for VOC format, these can't be annotated."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow:59 of
+msgid "The state of whether the image load finished."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow:65 of
+msgid "List of polygons. These will be saved to disk as annotations."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow:71 of
+msgid "The color array. (N, 3), numpy.uint8"
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow:77 of
+msgid ""
+"The map mode, means the current displayed state in the scene, which "
+"include 'LABEL', 'SEMANTIC' and 'INSTANCE'."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow:79 of
+msgid "MAPMode"
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow:83 of
+msgid "The current annotation."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow:85 of
+msgid "Annotation"
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow:89 of
+msgid "The state of whether the SAM model can be used."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow:95 of
+msgid "The state of whether the SAM model can be used to video segmentation."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow:101 of
+msgid "The state of whether the remote sam is being used."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow:107 of
+msgid "The mode of group. Default is 'auto'."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.init_segment_anything:1 of
+msgid "Initialize segment anything model."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.init_segment_anything:3 of
+msgid "The path of the checkpoint file."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.init_segment_anything:5 of
+msgid "If not checked, skip."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.init_sam_finish:1 of
+msgid ""
+"Triggered when SAM finish is finished. Then start thread of sam encoder "
+"and video segmentation."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.init_sam_finish:5
+#: IVAS.widgets.mainwindow.MainWindow.sam_encoder_finish:5
+#: IVAS.widgets.mainwindow.MainWindow.seg_video_finish:5 of
+msgid "Do not call this function manually"
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.init_sam_finish:7 of
+msgid "The state of whether SAM can be used."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.init_sam_finish:9 of
+msgid "The state of whether video segmentation can be used."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.sam_encoder_finish:1 of
+msgid "Triggered when sam encoder is finished."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.sam_encoder_finish:7 of
+msgid "The index of image."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.sam_encoder_finish:9 of
+msgid ""
+"The state of sam encoder result. 0 - delete; 1 - success; 2 - working; 3 "
+"- error."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.sam_encoder_finish:11 of
+msgid "Error message."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.SeganyEnabled:1 of
+msgid ""
+"If current image has cached feature map by SAM encoder thread, enable "
+"semi-automatic annotation."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.seg_video_start:1 of
+msgid "Start video segmentation."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.seg_video_start:3 of
+msgid "The maximum number of frames to track. Default: None, all frames."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.seg_video_finish:1 of
+msgid "Triggered when video segmentation finished."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.seg_video_finish:7 of
+msgid "The index of current frame to segmentation."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.seg_video_finish:9 of
+msgid "The total number of frames."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.seg_video_finish:11 of
+msgid "The state of whether current frame is finished."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.seg_video_finish:13 of
+msgid "The state of whether current frame error."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.seg_video_finish:15 of
+msgid ""
+"Error message.current, total, finished, is_error, message. int, int, "
+"bool, bool, str"
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.load_actions_shortcut:1 of
+msgid "Load shortcut"
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.load_actions_shortcut:3 of
+msgid "load default shortcut if True."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.open_dir:1 of
+msgid "Open image root. Update file list and show the first image."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.open_dir:5 of
+msgid "The label root will set same as the image root."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.open_dir:7 of
+msgid "If exist 'ivas.yaml' under label root, will reload it."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.save_dir:1 of
+msgid "Open label root."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.save:1 of
+msgid "Save annotations to disk."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.show_image:1 of
+msgid "Show image and load annotations if exists."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.show_image:3 of
+msgid "Index of image."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.show_image:5 of
+msgid "Zoomfit."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.prev_image:1 of
+msgid "Previous image."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.next_image:1 of
+msgid "Next image."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.jump_to:1 of
+msgid "Jump to the image."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.jump_to:3 of
+msgid ""
+"Index or name of the image. Index in (1, len(self.files_list)); name with"
+" suffix."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.change_bit_map:1 of
+msgid "Change the map mode, means the current displayed state in the scene."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.change_bit_map:3 of
+msgid "LABEL -> SEMANTIC -> INSTANCE -> LABEL -> SEMANTIC -> ...."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.set_labels_visible:1 of
+msgid "Set polygons visible in scene."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.set_labels_visible:3 of
+msgid "True or False"
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.model_manage:1 of
+msgid "Open the model management interface."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.remote_sam:1 of
+msgid "Open the remote SAM model interface."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.change_bfloat16_state:1 of
+msgid "Change SAM model dtype. bfloat16 <=> float32."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.change_contour_mode:1 of
+msgid ""
+"Change contour mode. It has an effect when converting sam mask to "
+"polygons."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.change_contour_mode:3 of
+msgid "contour mode. which include 'max_only' 'external' and 'all'."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.change_mask_alpha:1 of
+msgid "Change mask alpha."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.change_mask_alpha:3 of
+msgid "mask alpha. [0, 10]"
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.change_vertex_size:1 of
+msgid "Change vertex size."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.change_vertex_size:3 of
+msgid "vertex size. [0, 5]"
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.change_real_time_area_state:1 of
+msgid "Change real time area state."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.change_real_time_area_state:5 of
+msgid ""
+"The area of the polygon can be viewed in the edit interface.(double click"
+" polygon to open.)"
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.change_edge_state:1 of
+msgid "Show edge of polygons."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.change_approx_polygon_state:1 of
+msgid ""
+"Change polygon state. It has an effect when converting sam mask to "
+"polygons, can reduce the number of vertices of the polygon."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.change_create_mode_invisible_polygon_state:1
+#: of
+msgid "Invisible polygons in the create mode."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.change_saturation:1 of
+msgid "Only acts on display, don't acts on SAM model."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.change_prompt_visiable:1 of
+msgid "Show SAM propmt point."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.converter:1 of
+msgid "Open data converter interface."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.video2frames:1 of
+msgid "Open video to farames interface. Split the video to frames."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.auto_segment:1 of
+msgid ""
+"Open auto segment interface. Convert object detection data to segment "
+"data."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.process_exif:1 of
+msgid ""
+"Open process exif interface. Deal with the rotation problem of pictures "
+"with EXIF tags."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.shortcut:1 of
+msgid "Open shortcut interface."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.about:1 of
+msgid "Open about interface."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.setting:1 of
+msgid "Open setting interface."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.screen_shot:1 of
+msgid "Screenshot."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.screen_shot:3 of
+msgid "'scene' or 'window'"
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.save_cfg:1 of
+msgid "Save categories config to disk."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.save_cfg:3 of
+msgid "Path to config file."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.save_software_cfg:1 of
+msgid "Save all config to disk."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.open_docs:1 of
+msgid "Open the docs."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.latest_version_tip:1 of
+msgid "Check whether it is the latest version."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.latest_version_tip:3 of
+msgid "Whether it is the latest version."
+msgstr ""
+
+#: IVAS.widgets.mainwindow.MainWindow.latest_version_tip:5 of
+msgid "The latest version."
+msgstr ""
+
+#: ../../source/_api/IVAS.widgets.rst:104
+msgid "IVAS.widgets.model\\_manager\\_dialog module"
+msgstr ""
+
+#: IVAS.widgets.model_manager_dialog.DownloadThread:1 of
+msgid "Thread for downloading checkpoint."
+msgstr ""
+
+#: IVAS.widgets.model_manager_dialog.DownloadThread:5 of
+msgid "Url list, which include: 'huggingface' and 'modelscope'."
+msgstr ""
+
+#: IVAS.widgets.model_manager_dialog.DownloadThread:11 of
+msgid "Checkpoint name."
+msgstr ""
+
+#: IVAS.widgets.model_manager_dialog.DownloadThread:17 of
+msgid "Pause download."
+msgstr ""
+
+#: IVAS.widgets.model_manager_dialog.ModelManagerDialog:1 of
+msgid ""
+"Bases: :py:class:`~PyQt5.QtWidgets.QDialog`, "
+":py:class:`~IVAS.ui.model_manager_dialog.Ui_Dialog`"
+msgstr ""
+
+#: IVAS.widgets.model_manager_dialog.ModelManagerDialog:1 of
+msgid "Model manager interface."
+msgstr ""
+
+#: ../../source/_api/IVAS.widgets.rst:112
+msgid "IVAS.widgets.plugin\\_base module"
+msgstr ""
+
+#: IVAS.widgets.plugin_base.PluginBase:1 of
+msgid "Bases: :py:class:`~abc.ABC`"
+msgstr ""
+
+#: IVAS.widgets.plugin_base.PluginBase:1 of
+msgid "Base class for all plugins."
+msgstr ""
+
+#: IVAS.widgets.plugin_base.PluginBase.init_plugin:1 of
+msgid "Be used to plugin initialization."
+msgstr ""
+
+#: IVAS.widgets.plugin_base.PluginBase.init_plugin:3 of
+msgid "s"
+msgstr ""
+
+#: IVAS.widgets.plugin_base.PluginBase.init_plugin:3 of
+msgid "Arguments:"
+msgstr ""
+
+#: IVAS.widgets.plugin_base.PluginBase.init_plugin:4 of
+msgid "mainwindow (MainWindow): Get attributes and functions from mainwindow."
+msgstr ""
+
+#: IVAS.widgets.plugin_base.PluginBase.enable_plugin:1 of
+msgid "Enable plugin"
+msgstr ""
+
+#: IVAS.widgets.plugin_base.PluginBase.disable_plugin:1 of
+msgid "Disable plugin"
+msgstr ""
+
+#: IVAS.widgets.plugin_base.PluginBase.get_plugin_author:1 of
+msgid "Get plugin author."
+msgstr ""
+
+#: IVAS.widgets.plugin_base.PluginBase.get_plugin_author:3 of
+msgid "Plugin author."
+msgstr ""
+
+#: IVAS.widgets.plugin_base.PluginBase.get_plugin_version:1 of
+msgid "Get plugin version."
+msgstr ""
+
+#: IVAS.widgets.plugin_base.PluginBase.get_plugin_version:3 of
+msgid "Plugin version."
+msgstr ""
+
+#: IVAS.widgets.plugin_base.PluginBase.get_plugin_description:1 of
+msgid "Get plugin description."
+msgstr ""
+
+#: IVAS.widgets.plugin_base.PluginBase.get_plugin_description:3 of
+msgid "Plugin description."
+msgstr ""
+
+#: IVAS.widgets.plugin_base.PluginBase.get_plugin_name:1 of
+msgid "Get plugin name."
+msgstr ""
+
+#: IVAS.widgets.plugin_base.PluginBase.get_plugin_name:3 of
+msgid "Plugin name. Default is the plugin class name."
+msgstr ""
+
+#: IVAS.widgets.plugin_base.PluginBase.before_image_open_event:1 of
+msgid "当图片打开前调用"
+msgstr ""
+
+#: IVAS.widgets.plugin_base.PluginBase.before_image_open_event:3 of
+msgid "The path of the image."
+msgstr ""
+
+#: IVAS.widgets.plugin_base.PluginBase.after_image_open_event:1 of
+msgid "当图片打开后调用"
+msgstr ""
+
+#: IVAS.widgets.plugin_base.PluginBase.before_annotation_start_event:1 of
+msgid "当开始标注前调用"
+msgstr ""
+
+#: IVAS.widgets.plugin_base.PluginBase.after_annotation_created_event:1 of
+msgid "当标注创建完成后调用"
+msgstr ""
+
+#: IVAS.widgets.plugin_base.PluginBase.after_annotation_changed_event:1 of
+msgid "当标注发生变化后调用，包括创建新标注，拖动顶点，移动多边形，改变多边形属性等"
+msgstr ""
+
+#: IVAS.widgets.plugin_base.PluginBase.before_annotations_save_event:1 of
+msgid "当保存标注文件前调用"
+msgstr ""
+
+#: IVAS.widgets.plugin_base.PluginBase.after_annotations_saved_event:1 of
+msgid "当保存标注文件后调用"
+msgstr ""
+
+#: IVAS.widgets.plugin_base.PluginBase.after_sam_encode_finished_event:1 of
+msgid ""
+"当sam编码完成后调用 "
+"注意IVAS在单独线程对前后图像进行预编码，通过self.mainwindow.seganythread.results_dict中获取编码结果"
+msgstr ""
+
+#: IVAS.widgets.plugin_base.PluginBase.after_sam_encode_finished_event:4 of
+msgid "Index of the image which has been encoded."
+msgstr ""
+
+#: IVAS.widgets.plugin_base.PluginBase.on_mouse_move_event:1 of
+msgid "当鼠标移动时调用"
+msgstr ""
+
+#: IVAS.widgets.plugin_base.PluginBase.on_mouse_move_event:3
+#: IVAS.widgets.plugin_base.PluginBase.on_mouse_press_event:3
+#: IVAS.widgets.plugin_base.PluginBase.on_mouse_pressed_and_mouse_move_event:3
+#: IVAS.widgets.plugin_base.PluginBase.on_mouse_release_event:3 of
+msgid "坐标，限制在图像范围内"
+msgstr ""
+
+#: IVAS.widgets.plugin_base.PluginBase.on_mouse_press_event:1 of
+msgid "当鼠标按下时调用"
+msgstr ""
+
+#: IVAS.widgets.plugin_base.PluginBase.on_mouse_release_event:1 of
+msgid "当鼠标释放时调用"
+msgstr ""
+
+#: IVAS.widgets.plugin_base.PluginBase.on_mouse_pressed_and_mouse_move_event:1
+#: of
+msgid "当鼠标拖动时调用"
+msgstr ""
+
+#: IVAS.widgets.plugin_base.PluginBase.application_start_event:1 of
+msgid "软件启动后触发"
+msgstr ""
+
+#: IVAS.widgets.plugin_base.PluginBase.application_shutdown_event:1 of
+msgid "软件关闭前触发"
+msgstr ""
+
+#: ../../source/_api/IVAS.widgets.rst:120
+msgid "IVAS.widgets.plugin\\_manager\\_dialog module"
+msgstr ""
+
+#: IVAS.widgets.plugin_manager_dialog.PluginManagerDialog:1 of
+msgid ""
+"Bases: :py:class:`~PyQt5.QtWidgets.QDialog`, "
+":py:class:`~IVAS.ui.plugin_manager_dialog.Ui_Dialog`"
+msgstr ""
+
+#: IVAS.widgets.plugin_manager_dialog.PluginManagerDialog:1 of
+msgid "Plugin manager interface, also include most of all functions of plugin."
+msgstr ""
+
+#: ../../source/_api/IVAS.widgets.rst:128
+msgid "IVAS.widgets.polygon module"
+msgstr ""
+
+#: IVAS.widgets.polygon.Line:1 IVAS.widgets.polygon.LineVertex:1
+#: IVAS.widgets.polygon.PromptPoint:1 IVAS.widgets.polygon.RectVertex:1
+#: IVAS.widgets.polygon.Vertex:1 of
+msgid "Bases: :py:class:`~PyQt5.QtWidgets.QGraphicsPathItem`"
+msgstr ""
+
+#: IVAS.widgets.polygon.PromptPoint:1 of
+msgid "SAM prompt point."
+msgstr ""
+
+#: IVAS.widgets.polygon.Vertex:1 of
+msgid "Vertex of polygon."
+msgstr ""
+
+#: IVAS.widgets.polygon.Polygon:1 of
+msgid "Bases: :py:class:`~PyQt5.QtWidgets.QGraphicsPolygonItem`"
+msgstr ""
+
+#: IVAS.widgets.polygon.Polygon:1 of
+msgid "Polygon."
+msgstr ""
+
+#: IVAS.widgets.polygon.Polygon:5 of
+msgid "The width of the edge."
+msgstr ""
+
+#: IVAS.widgets.polygon.Polygon:11 of
+msgid "The alpha value of the polygon when hovering."
+msgstr ""
+
+#: IVAS.widgets.polygon.Polygon:17 of
+msgid "the alpha value of the polygon when nohovering."
+msgstr ""
+
+#: IVAS.widgets.polygon.Polygon:23 of
+msgid "Record the point pos of the polygon."
+msgstr ""
+
+#: IVAS.widgets.polygon.Polygon:29 of
+msgid "Record the vertices of the polygon."
+msgstr ""
+
+#: IVAS.widgets.polygon.Polygon:31 of
+msgid "list[Vertex]"
+msgstr ""
+
+#: IVAS.widgets.polygon.Polygon:35 of
+msgid "The flag to indicate if the polygon is drawing."
+msgstr ""
+
+#: IVAS.widgets.polygon.Polygon:41 of
+msgid "The category of the polygon."
+msgstr ""
+
+#: IVAS.widgets.polygon.Polygon:47 of
+msgid "The group of the polygon."
+msgstr ""
+
+#: IVAS.widgets.polygon.Polygon:53 of
+msgid "The flag to indicate if the polygon is crowd."
+msgstr ""
+
+#: IVAS.widgets.polygon.Polygon:59 of
+msgid "The note of the polygon."
+msgstr ""
+
+#: IVAS.widgets.polygon.Polygon.addPoint:1 of
+msgid "Add a vertex to the polygon."
+msgstr ""
+
+#: IVAS.widgets.polygon.Polygon.addPoint:3 of
+msgid "The vertex to add."
+msgstr ""
+
+#: IVAS.widgets.polygon.Polygon.movePoint:1 of
+msgid ""
+"Move the point at the given index to the given point. The point is saved "
+"in self.points."
+msgstr ""
+
+#: IVAS.widgets.polygon.Polygon.movePoint:3
+#: IVAS.widgets.polygon.Polygon.moveVertex:3 of
+msgid "The index of the vertex to move."
+msgstr ""
+
+#: IVAS.widgets.polygon.Polygon.movePoint:5
+#: IVAS.widgets.polygon.Polygon.moveVertex:5 of
+msgid "The point to move to."
+msgstr ""
+
+#: IVAS.widgets.polygon.Polygon.removePoint:1 of
+msgid "Remove a vertex from the polygon."
+msgstr ""
+
+#: IVAS.widgets.polygon.Polygon.removePoint:3 of
+msgid "The index of the vertex to remove."
+msgstr ""
+
+#: IVAS.widgets.polygon.Polygon.delete:1 of
+msgid "Delete the polygon."
+msgstr ""
+
+#: IVAS.widgets.polygon.Polygon.moveVertex:1 of
+msgid ""
+"Move the vertex at the given index to the given point. The vertex is "
+"saved in self.vertices."
+msgstr ""
+
+#: IVAS.widgets.polygon.Polygon.set_drawed:1 of
+msgid "Set attributes for polygon and set is_drawing attribute to False."
+msgstr ""
+
+#: IVAS.widgets.polygon.Polygon.set_drawed:3 of
+msgid "category of the polygon."
+msgstr ""
+
+#: IVAS.widgets.polygon.Polygon.set_drawed:4 of
+msgid "group of the polygon."
+msgstr ""
+
+#: IVAS.widgets.polygon.Polygon.set_drawed:5 of
+msgid "whether the polygon is crowd."
+msgstr ""
+
+#: IVAS.widgets.polygon.Polygon.set_drawed:6 of
+msgid "note of the polygon."
+msgstr ""
+
+#: IVAS.widgets.polygon.Polygon.set_drawed:7 of
+msgid "color of the polygon."
+msgstr ""
+
+#: IVAS.widgets.polygon.Polygon.set_drawed:8 of
+msgid "layer of the polygon in scene."
+msgstr ""
+
+#: IVAS.widgets.polygon.Polygon.calculate_area:1 of
+msgid "calculate area of polygon"
+msgstr ""
+
+#: IVAS.widgets.polygon.Polygon.load_object:1 of
+msgid "load attributes from Object of Annotation."
+msgstr ""
+
+#: IVAS.widgets.polygon.Polygon.load_object:3 of
+msgid "Object of Annotation."
+msgstr ""
+
+#: IVAS.widgets.polygon.Polygon.to_object:1 of
+msgid "Convert to Object of Annotation."
+msgstr ""
+
+#: IVAS.widgets.polygon.LineVertex:1 of
+msgid "The vertex of a Line for repaint mode."
+msgstr ""
+
+#: IVAS.widgets.polygon.Line:1 of
+msgid "The guideline for repaint mode."
+msgstr ""
+
+#: IVAS.widgets.polygon.RectVertex:1 of
+msgid "The vertex of the prompt rect for sam box prompt."
+msgstr ""
+
+#: IVAS.widgets.polygon.Rect:1 of
+msgid "Bases: :py:class:`~PyQt5.QtWidgets.QGraphicsRectItem`"
+msgstr ""
+
+#: IVAS.widgets.polygon.Rect:1 of
+msgid "The prompt rect for sam box prompt."
+msgstr ""
+
+#: ../../source/_api/IVAS.widgets.rst:136
+msgid "IVAS.widgets.process\\_exif\\_dialog module"
+msgstr ""
+
+#: IVAS.widgets.process_exif_dialog.ProcessExifDialog:1 of
+msgid ""
+"Bases: :py:class:`~PyQt5.QtWidgets.QDialog`, "
+":py:class:`~IVAS.ui.process_exif_dialog.Ui_Dialog`"
+msgstr ""
+
+#: ../../source/_api/IVAS.widgets.rst:144
+msgid "IVAS.widgets.remote\\_sam\\_dialog module"
+msgstr ""
+
+#: IVAS.widgets.remote_sam_dialog.RemoteSamDialog:1 of
+msgid ""
+"Bases: :py:class:`~PyQt5.QtWidgets.QDialog`, "
+":py:class:`~IVAS.ui.remote_sam_dialog.Ui_Dialog`"
+msgstr ""
+
+#: IVAS.widgets.remote_sam_dialog.IPv4Validator:1 of
+msgid "Bases: :py:class:`~PyQt5.QtGui.QValidator`"
+msgstr ""
+
+#: ../../source/_api/IVAS.widgets.rst:152
+msgid "IVAS.widgets.right\\_button\\_menu module"
+msgstr ""
+
+#: IVAS.widgets.right_button_menu.RightButtonMenu:1 of
+msgid "Bases: :py:class:`~PyQt5.QtWidgets.QMenu`"
+msgstr ""
+
+#: ../../source/_api/IVAS.widgets.rst:160
+msgid "IVAS.widgets.setting\\_dialog module"
+msgstr ""
+
+#: IVAS.widgets.setting_dialog.SettingDialog:1 of
+msgid ""
+"Bases: :py:class:`~PyQt5.QtWidgets.QDialog`, "
+":py:class:`~IVAS.ui.setting_dialog.Ui_Dialog`"
+msgstr ""
+
+#: ../../source/_api/IVAS.widgets.rst:168
+msgid "IVAS.widgets.shortcut\\_dialog module"
+msgstr ""
+
+#: IVAS.widgets.shortcut_dialog.ShortcutDialog:1 of
+msgid ""
+"Bases: :py:class:`~PyQt5.QtWidgets.QDialog`, "
+":py:class:`~IVAS.ui.shortcut_dialog.Ui_Dialog`"
+msgstr ""
+
+#: ../../source/_api/IVAS.widgets.rst:176
+msgid "IVAS.widgets.switch\\_button module"
+msgstr ""
+
+#: IVAS.widgets.switch_button.SwitchBtn:1 of
+msgid "Bases: :py:class:`~PyQt5.QtWidgets.QWidget`"
+msgstr ""
+
+#: ../../source/_api/IVAS.widgets.rst:184
+msgid "IVAS.widgets.video\\_to\\_frames\\_dialog module"
+msgstr ""
+
+#: IVAS.widgets.video_to_frames_dialog.Video2FramesDialog:1 of
+msgid ""
+"Bases: :py:class:`~PyQt5.QtWidgets.QDialog`, "
+":py:class:`~IVAS.ui.video_to_frames.Ui_Dialog`"
+msgstr ""
+
+#: ../../source/_api/IVAS.widgets.rst:192
+msgid "Module contents"
+msgstr ""
+
+#~ msgid "The masks output by sam model."
+#~ msgstr ""
+
+#~ msgid "The alpha value for the masks."
+#~ msgstr ""
+
+#~ msgid "Change to save all contour mode for convert masks to polygons."
+#~ msgstr ""
+
+#~ msgid "Change to save max contour mode for convert masks to polygons."
+#~ msgstr ""
+
+#~ msgid "Change to save external contour mode for convert masks to polygons."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Finish annotation. Convert masks to "
+#~ "polygons when using sam, if the "
+#~ "number of vertices less than 3, "
+#~ "delete polygon."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Change contour mode. It has an "
+#~ "effect when converting sam masks to "
+#~ "polygons."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Change polygon state. It has an "
+#~ "effect when converting sam masks to "
+#~ "polygons, can reduce the number of "
+#~ "vertices of the polygon."
+#~ msgstr ""
+
+#~ msgid "draw mode.eg:POLYGON, SEGMENTANYTHING, SEGMENTANYTHING_BOX"
+#~ msgstr ""
+

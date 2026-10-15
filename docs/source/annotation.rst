@@ -70,20 +70,34 @@ Click the ``Segment anything box`` button ``[W]`` in the toolbar to start SAM bo
 1.2.3 Text Prompt
 .................................
 
-Since v1.5.0, ISAT supports the text prompt function based on sam3.
+Since v1.5.0, IVAS supports text prompts. SAM 3.1 can reuse the current image
+embedding for one or more prompts.
 
-1. Input a prompt text for prediction.
+1. Select a foreground annotation category.
+
+2. Keep the category name as the prompt, or edit it to an English alias that is
+   easier for the model to ground.
+
+3. Click ``Segment selected`` to explicitly confirm prediction. Changing a
+   category does not automatically run the model.
+
+4. Review the created polygons. An empty model result creates no annotation.
 
 .. image:: ../../display/text_prompt1.gif
 
-2. Using the categories set in ISAT to prediction.
+The multiple-category action uses the configured category names as prompts and
+shares the SAM 3.1 image embedding.
 
 .. image:: ../../display/text_prompt2.gif
+
+.. note:: The selected annotation category and the editable model prompt are
+          intentionally separate. The category is saved in the annotation;
+          the prompt only guides segmentation.
 
 1.2.4 Visual Prompt
 .................................
 
-Since v1.5.2, ISAT supports the visual prompt function based on sam3.
+Since v1.5.2, IVAS supports the visual prompt function based on SAM3.
 
 Use the positive box and negative box for prediction.
 
@@ -96,7 +110,7 @@ Click the ``Finish annotation`` button ``[E]`` in the toolbar to end the annotat
 
 When using sam ``point prompt`` or ``box prompt``, ``finish annotation`` will convert the mask into a polygon on the canvas.
 
-.. tip:: ISAT offers multiple conversion methods, which you can find in the settings interface.
+.. tip:: IVAS offers multiple conversion methods, which you can find in the settings interface.
 
          Contour mode:
 
@@ -122,14 +136,82 @@ Click the ``Backspace`` button ``[Z]`` in the toolbar to return to the previous 
 5. Video Annotation
 ---------------------------------
 
-ISAT uses SAM2 or SAM3 for video annotation, provides the functions of annotating the next frame, the next five frames, and the entire video.
+5.1 Unified Phase/Task and frame annotation
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 
-.. image:: ../../display/video_annotation.gif
-    :alt: video_annotation.gif
+Use ``File → Open video`` to open the integrated video workspace. Select
+the Phase or Task lane, enter a label, press ``I`` at the interval start, and
+press ``O`` at its end. Intervals can also be selected from the timeline or
+table, undone, redone, and deleted.
 
-.. tip:: Video annotation process:
+``Annotate current frame`` pauses playback, maps the current time through the
+decoded presentation-timestamp index, extracts that frame in a cancellable
+background job, links a label file in ``labels``, and opens it in the normal IVAS
+polygon/SAM canvas. ``Mode → Frame`` uses the same extraction workflow; Mode
+changes only after the frame loads. Use ``Mode → Video`` or ``Return to video
+preview`` to return to the same case, retaining unfinished intervals.
+While extracting or editing a frame, the playhead stays pinned and seeking is
+disabled. The bottom transport provides ``Return to video`` in Frame mode;
+returning checks unfinished shapes and unsaved changes, restores that frame's
+position and leaves playback paused until Play is pressed. VLC pause is
+idempotent, so repeated frame transitions cannot accidentally resume playback.
+Reopening an unchanged frame in the same session reuses its extracted image,
+canvas, zoom and model features. Changed label files are reloaded.
 
-    - Select SAM2, SAM2.1 or SAM3 model.
-    - Start the video annotation with an already annotated frame.
-    - Click the ``Video segment once`` button or ``Video segment five times`` button or ``Video segment`` button.
+Point and box prompts run in a background worker. Rapid changes replace pending
+requests; only a result matching the current frame, model and prompts can appear.
+Finishing during inference waits for the latest mask without blocking the UI;
+Escape cancels the pending annotation. Right-hand inspector tabs retain full
+labels and expose scroll arrows when the available width is too small.
+
+Opening an image directory activates independent Frame mode and disables commands
+for any retained video. Video undo/redo affects annotations and templates only;
+it does not undo frame links, saved segmentation, media metadata, or tracking.
+While annotating a video frame, video shortcuts operate only when video panels
+or transport have focus; canvas focus retains the frame shortcuts.
+The player supports 0.25×--2× rates and exact frame stepping. Scroll the timeline
+to zoom, Shift-scroll to pan, and double-click it to reset the view. When Qt
+cannot decode a codec, the application attempts its VLC fallback.
+
+The recoverable ``project.ivas.json`` manifest is stored below ``outputs`` in a
+video-fingerprint case directory. Existing ``project.ivat.json`` and ``project.ivas.json`` manifests are
+still discovered for compatibility. Existing manifests can be opened directly and
+moved media can be relinked. A fingerprint mismatch is never accepted silently:
+the user must confirm it and the old identity is preserved in media history. If
+the same case contains a legacy ``project.surgui.json``, its temporal records are
+migrated.
+
+The schema-v3 editor creates and edits template-driven intervals, points/key
+frames and ratings with notes and review status. ``Video annotation`` contains
+template management, validation, coverage and frame-index controls. ``File``
+owns opening, saving and interchange; ``Project`` configures directories and
+media relinking; ``Tracking`` contains staged propagation and review.
+
+5.2 Legacy image-sequence propagation (retired)
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+
+The former ``Video segment once/five/all`` actions wrote generated objects
+directly into later image-sequence labels. Those actions are now disabled and
+hidden because they did not provide review, cancellation-safe persistence, or
+rollback. Open the source video in the unified workspace and use the transaction
+workflow below.
+
+5.3 Transactional unified-video tracking
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+
+With a compatible SAM2/SAM3/SAM3.1 video model loaded, choose ``Tracking → Start
+transactional tracking``. Select a forward, backward or bidirectional range and
+one or more reviewed correction frames. Generated dense masks are stored in a
+run-specific staging directory and do not change accepted IVAS labels until the
+user opens ``Review / commit staged tracking`` and confirms the commit.
+
+Manual objects win identity conflicts by default. A failed save restores every
+label and leaves the run staged for retry; a committed run can be rolled back
+from the same menu. Stable ``object_id`` and ``track_id`` fields survive normal
+polygon editing and project reopen.
+
+.. attention:: A bare SAM 3.1 detector checkpoint has no video-predictor weights
+               and cannot be used for tracking. The legacy image-sequence
+               tracker is retired because it wrote accepted labels directly;
+               use the staged unified-video workflow instead.
 

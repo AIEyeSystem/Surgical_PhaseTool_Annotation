@@ -1,12 +1,11 @@
 # SOME DESCRIPTIVE TITLE.
-# Copyright (C) 2025, Shuwei Ji and Hongyuan Zhang
-# This file is distributed under the same license as the ISAT-SAM package.
+# Copyright (C) 2026, zack zhao
+# This file is distributed under the same license as the IVAS package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
 #
-#, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: ISAT-SAM \n"
+"Project-Id-Version: IVAS \n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-08-06 18:00+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -28,12 +27,12 @@ msgid "1. Plugin Base Class"
 msgstr "1. 插件基类"
 
 #: ../../source/plugin_development.rst:7
-msgid "ISAT.widgets.plugin_base.py"
+msgid "IVAS.widgets.plugin_base.py"
 msgstr ""
 
 #: ../../source/plugin_development.rst:185
-msgid "PluginBase is the base class for all ISAT plugin classes"
-msgstr "PluginBase 是所有 ISAT 插件的基类"
+msgid "PluginBase is the base class for all IVAS plugin classes"
+msgstr "PluginBase 是所有 IVAS 插件的基类"
 
 #: ../../source/plugin_development.rst:188
 msgid "2. Plugin Entry Point"
@@ -44,18 +43,18 @@ msgid "setup.py"
 msgstr ""
 
 #: ../../source/plugin_development.rst:199
-msgid "All ISAT plugins are released in the form of Python packages."
-msgstr "所有 ISAT 插件都以 Python 包的形式发布。"
+msgid "All IVAS plugins are released in the form of Python packages."
+msgstr "所有 IVAS 插件都以 Python 包的形式发布。"
 
 #: ../../source/plugin_development.rst:201
 msgid ""
-"**Plugin must use setup.py to add the plugin classes to the isat.plugins "
+"**Legacy plugins may use setup.py to add plugin classes to the ivas.plugins "
 "entry_points.**"
-msgstr "**插件必须使用 setup.py 将插件类添加到 entry_points 的 isat.plugins 中。**"
+msgstr "**旧插件可继续通过 setup.py 将插件类添加到 entry_points 的 ivas.plugins 中。**"
 
 #: ../../source/plugin_development.rst:204
-msgid "3. Plugin Get ISAT Data"
-msgstr "3. 插件获取ISAT数据"
+msgid "3. Plugin Get IVAS Data"
+msgstr "3. 插件获取IVAS数据"
 
 #: ../../source/plugin_development.rst:206
 msgid "The data returned from the events of the plugin base class is limited."
@@ -63,9 +62,9 @@ msgstr "从插件基类的事件中获取的数据是有限的。"
 
 #: ../../source/plugin_development.rst:208
 msgid ""
-"Generally, when developing ISAT plugins, you can get ISAT data through "
+"Generally, when developing IVAS plugins, you can get IVAS data through "
 "``self.mainwindow`` ."
-msgstr "在开发 ISAT 插件时，可以通过 ``self.mainwindow`` 直接访问ISAT数据。"
+msgstr "在开发 IVAS 插件时，可以通过 ``self.mainwindow`` 直接访问IVAS数据。"
 
 #: ../../source/plugin_development.rst:211
 msgid "4. Create Your First Plugin"

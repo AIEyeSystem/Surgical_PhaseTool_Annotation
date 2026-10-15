@@ -1,18 +1,83 @@
-
-*.pyc
-ISAT/checkpoints/sam_hq_vit_h.pth
-ISAT/checkpoints/mobile_sam.pt
-ISAT/isat.yaml
-*.yaml
-ISAT/software.yaml
-ISAT/isat.yaml
-
-# PyInstaller打包相关
-build/
-dist/
-*.spec.bak
-build.log
-*.egg-info/
+# Python environments, caches and package output
+/.venv/
+/venv/
+/env/
 __pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.ipynb_checkpoints/
+
+# Build output (keep the PyInstaller .spec and build scripts)
+/build/
+/dist/
+/tmp/
+/temp/
+*.spec.bak
+*.log
+*.tmp
+*.bak
+
+# Local datasets, generated annotations, experiment output and reference checkout
+/data/
+/datasets/
+/outputs/
+/results/
+/ref/
+/update/
+/sh_scripts/
+/exp_guide/
+project.ivas.json
+project.ivat.json
+
+# Downloaded model weights and inference artifacts
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+*.engine
+/IVAS/checkpoints/
+
+# Local category configuration; keep shipped defaults and model YAML configs
+/IVAS/ivas.yaml
+/IVAS/ivat.yaml
+/IVAS/isat.yaml
+
+# Machine-specific assistant/editor configuration
+/.agents/
+/.codex/
+/.claude/
+/CLAUDE.md
 .idea/
+.vscode/
 *.iml
+*.swp
+*~
+
+# Credentials and local environment overrides
+.env
+.env.*
+!.env.example
+.ssh/
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+githubeye
+githubeye.pub
+
+# OS metadata
+.DS_Store
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/

@@ -16,6 +16,9 @@ Plugin List
         - yatengLG
         - https://github.com/yatengLG/ISAT_plugin_mask_export
 
-.. tip:: Welcome everyone to recommend the plugins you've developed. ISAT will include them in the plugin list.
+.. tip:: These are existing third-party plugin references retained for
+         compatibility; their listed authors and repository URLs describe those
+         plugins, not IVAS ownership or support.
 
-         You can create a new discussion to recommend a plugin in `ISAT discussions page <https://github.com/yatengLG/ISAT_with_segment_anything/discussions>`_
+         Recommend new plugins through the support channel supplied with your
+         IVAS distribution.

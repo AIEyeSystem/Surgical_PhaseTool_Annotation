@@ -5,7 +5,7 @@ Plugin Development
 ------------------------------------
 
 .. code-block:: python
-   :caption: ISAT.widgets.plugin_base.py
+   :caption: IVAS.widgets.plugin_base.py
    :emphasize-lines: 6, 14, 23, 32, 40, 48
 
     class PluginBase(ABC):
@@ -16,7 +16,7 @@ Plugin Development
         def init_plugin(self, mainwindow):
             """
             接受主程序调用，进行初始化
-            :param mainwindow: 传入mainwindow，便于访问ISAT主程序的各种方法与属性
+            :param mainwindow: 传入mainwindow，便于访问IVAS主程序的各种方法与属性
             """
             pass
 
@@ -129,7 +129,7 @@ Plugin Development
         def after_sam_encode_finished_event(self, index):
             """
             当sam编码完成后调用
-            注意ISAT在单独线程对前后图像进行预编码，通过self.mainwindow.seganythread.results_dict中获取编码结果
+            注意IVAS在单独线程对前后图像进行预编码，通过self.mainwindow.seganythread.results_dict中获取编码结果
             :param index: 编码完成的图片index
             :return:
             """
@@ -182,7 +182,7 @@ Plugin Development
             """
             pass
 
-.. tip:: PluginBase is the base class for all ISAT plugin classes
+.. tip:: PluginBase is the base class for all IVAS plugin classes.
 
 2. Plugin Entry Point
 ------------------------------------
@@ -192,20 +192,23 @@ Plugin Development
 
     ...
     entry_points={
-        "isat.plugins": []
+        "ivas.plugins": []
     }
     ...
 
-.. important:: All ISAT plugins are released in the form of Python packages.
+.. important:: IVAS plugins are released in the form of Python packages.
 
-               **Plugin must use setup.py to add the plugin classes to the isat.plugins entry_points.**
+               **New plugins should add their classes to the ``ivas.plugins``
+               entry-point group. IVAS also scans the previous ``ivat.plugins``
+               group so existing plugins continue to load.**
 
-3. Plugin Get ISAT Data
+3. Plugin Access to IVAS Data
 ------------------------------------
 
 The data returned from the events of the plugin base class is limited.
 
-Generally, when developing ISAT plugins, you can get ISAT data through ``self.mainwindow`` .
+When developing IVAS plugins, application data can be accessed through
+``self.mainwindow``. Import application APIs from the ``IVAS`` package.
 
 4. Create Your First Plugin
 ------------------------------------
@@ -247,7 +250,7 @@ It is recommended to use the following structure as the plugin project.
 
     .. code-block:: python
 
-        from ISAT.widgets.plugin_base import PluginBase
+        from IVAS.widgets.plugin_base import PluginBase
 
         class CustomPlugin(PluginBase):
             def __init__(self):
@@ -284,21 +287,21 @@ It is recommended to use the following structure as the plugin project.
         version, author = get_version()
 
         setup(
-            name="isat-plugin-{custom}",                 # It is recommended that the package name start with "isat-plugin".
+            name="ivas-plugin-{custom}",                 # Recommended IVAS plugin package prefix.
             version={version},
             author={author},
-            keywords=["isat-sam", "isat plugin", ...],
+            keywords=["ivas-sam", "ivas plugin", ...],
 
             packages=find_packages(),
             include_package_data=True,
 
             python_requires=">=3.8",
             install_requires=[
-                'isat-sam>=1.4.0',
+                'ivas-sam>=1.4.0',
             ],
 
             entry_points={
-                "isat.plugins": [
+                "ivas.plugins": [
                     "{custom_plugin} = {PluginPackage}.main:{CustomPlugin}",
                 ]
             }
@@ -318,7 +321,7 @@ It is recommended to use the following structure as the plugin project.
 
     .. code-block:: shell
 
-        pip install dist/{isat_plugin_custom}-{version}.tar.gz
+        pip install dist/{ivas_plugin_custom}-{version}.tar.gz
 
 .. tip:: You can refer to the plugins: `AutoAnnotatePlugin <https://github.com/yatengLG/ISAT_plugin_auto_annotate>`_ and `MaskExportPlugin <https://github.com/yatengLG/ISAT_plugin_mask_export>`_ to develop your own plugins.
 

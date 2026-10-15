@@ -5,7 +5,7 @@ random choices five images from coco/instances_val2017, contain polygon and RLE(
 - images - coco tiny images
 - coco_tiny.json - coco json file.
 - yolo - yolo annotation files convert from coco.json by [yolov8 script](https://github.com/ultralytics/JSON2YOLO/blob/c38a43f342428849c75c103c6d060012a83b5392/general_json2yolo.py)
-- isat - annotation files labeled by isat.
+- ivas - annotation files labeled by ivas.
 
 # 微小COCO数据
 
@@ -15,4 +15,4 @@ random choices five images from coco/instances_val2017, contain polygon and RLE(
 - images - coco tiny图片存放文件夹
 - coco_tiny.json - coco注释文件。摘自coco/annotations/instances_val2017.json
 - yolo - yolo注释文件。通过[yolov8 提供的coco转换yolo脚本](https://github.com/ultralytics/JSON2YOLO/blob/c38a43f342428849c75c103c6d060012a83b5392/general_json2yolo.py)转换coco_tiny.json得到。
-- isat - isat注释文件。由ISAT标注得到。
+- ivas - ivas注释文件。由IVAS标注得到。

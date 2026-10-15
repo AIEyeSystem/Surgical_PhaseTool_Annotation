@@ -4,14 +4,14 @@ Category Setting
 1. Category Setting
 ---------------------------------
 
-In ISAT, you can customize category names and their display colors.
+In IVAS, you can customize category names and their display colors.
 
 Click the ``Category settings`` button to open the category settings interface.
 
 .. image:: ../../display/category_setting.png
     :alt: category_setting.png
 
-.. tip:: The background category is not modifiable in ISAT.
+.. tip:: The background category is not modifiable in IVAS.
 
 2. Select Category
 ---------------------------------
@@ -31,7 +31,7 @@ Numbers ``[1 - 9]`` are category selection shortcut keys, allowing you to quickl
 2.2 Quickly Locate the Category
 ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 
-ISAT uses a fuzzy matching algorithm to locate the desired category from a large number of categories.
+IVAS uses a fuzzy matching algorithm to locate the desired category from a large number of categories.
 
 .. image:: ../../display/category_search.gif
     :alt: category_search.gif

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# @Author  : LG
+# @Maintainer: zack zhao
 
 from pycocotools import coco as mscoco
 import os

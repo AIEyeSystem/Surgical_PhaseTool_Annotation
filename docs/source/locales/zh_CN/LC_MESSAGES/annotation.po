@@ -1,12 +1,11 @@
 # SOME DESCRIPTIVE TITLE.
-# Copyright (C) 2025, Shuwei Ji and Hongyuan Zhang
-# This file is distributed under the same license as the ISAT-SAM package.
+# Copyright (C) 2026, zack zhao
+# This file is distributed under the same license as the IVAS package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
 #
-#, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: ISAT-SAM \n"
+"Project-Id-Version: IVAS \n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-12-31 14:08+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -143,24 +142,24 @@ msgid "1.2.3 Text Prompt"
 msgstr "1.2.3 文本提示"
 
 #: ../../source/annotation.rst:73
-msgid "Since v1.5.0, ISAT supports the text prompt function based on sam3."
-msgstr "从v1.5.0开始，ISAT支持基于SAM3的文本提示功能。"
+msgid "Since v1.5.0, IVAS supports the text prompt function based on sam3."
+msgstr "从v1.5.0开始，IVAS支持基于SAM3的文本提示功能。"
 
 #: ../../source/annotation.rst:75
 msgid "Input a prompt text for prediction."
 msgstr "输入提示文本进行预测。"
 
 #: ../../source/annotation.rst:79
-msgid "Using the categories set in ISAT to prediction."
-msgstr "使用ISAT设置的类别进行预测。"
+msgid "Using the categories set in IVAS to prediction."
+msgstr "使用IVAS设置的类别进行预测。"
 
 #: ../../source/annotation.rst:84
 msgid "1.2.4 Visual Prompt"
 msgstr "1.2.4 视觉提示"
 
 #: ../../source/annotation.rst:86
-msgid "Since v1.5.2, ISAT supports the visual prompt function based on sam3."
-msgstr "从v1.5.2开始，ISAT支持基于SAM3的视觉提示功能。"
+msgid "Since v1.5.2, IVAS supports the visual prompt function based on sam3."
+msgstr "从v1.5.2开始，IVAS支持基于SAM3的视觉提示功能。"
 
 #: ../../source/annotation.rst:88
 msgid "Use the positive box and negative box for prediction."
@@ -184,9 +183,9 @@ msgstr "当使用SAM进行 ``点提示`` 或 ``框提示`` 半自动标注时，
 
 #: ../../source/annotation.rst:99
 msgid ""
-"ISAT offers multiple conversion methods, which you can find in the "
+"IVAS offers multiple conversion methods, which you can find in the "
 "settings interface."
-msgstr "ISAT提供了多种掩码转换多边形的逻辑，名为轮廓模式，你可以在设置界面中进行设置。"
+msgstr "IVAS提供了多种掩码转换多边形的逻辑，名为轮廓模式，你可以在设置界面中进行设置。"
 
 #: ../../source/annotation.rst:101
 msgid "Contour mode:"
@@ -240,9 +239,9 @@ msgstr "5. 视频标注"
 
 #: ../../source/annotation.rst:125
 msgid ""
-"ISAT uses SAM2 or SAM3 for video annotation, provides the functions of "
+"IVAS uses SAM2 or SAM3 for video annotation, provides the functions of "
 "annotating the next frame, the next five frames, and the entire video."
-msgstr "ISAT使用 SAM2 或 SAM3 模型实现视频标注，提供了下一帧，下五帧，所有帧的标注功能。"
+msgstr "IVAS使用 SAM2 或 SAM3 模型实现视频标注，提供了下一帧，下五帧，所有帧的标注功能。"
 
 #: ../../source/annotation.rst:-1
 msgid "video_annotation.gif"
