@@ -24,6 +24,7 @@ class COCO(IVAS):
     """
 
     def __init__(self):
+        super().__init__()
         self.keep_crowd = True
 
     def read_from_coco(self, annotation_file: str) -> bool:
@@ -224,13 +225,17 @@ class COCO(IVAS):
                         objs_with_cat = [
                             obj for obj in objs_with_group if obj.category == cat
                         ]
-                        crowds = [obj.iscrowd for obj in objs_with_group]
+                        crowds = [obj.iscrowd for obj in objs_with_cat]
                         crowds = set(crowds)
                         # 同iscrowd
                         for crowd in crowds:
+                            if crowd and not self.keep_crowd:
+                                continue
                             objs_with_crowd = [
                                 obj for obj in objs_with_cat if obj.iscrowd == crowd
                             ]
+                            if not objs_with_crowd:
+                                continue
                             # anno
                             coco_anno_info = {}
                             coco_anno_info["iscrowd"] = crowd
@@ -247,7 +252,7 @@ class COCO(IVAS):
                                 segmentation = obj.segmentation
                                 area = obj.area
                                 bbox = obj.bbox
-                                if bbox is None:
+                                if bbox is None or len(bbox) != 4:
                                     segmentation_nd = np.array(segmentation)
                                     bbox = [
                                         min(segmentation_nd[:, 0]),
@@ -255,7 +260,11 @@ class COCO(IVAS):
                                         max(segmentation_nd[:, 0]),
                                         max(segmentation_nd[:, 1]),
                                     ]
+                                    bbox = [float(value) for value in bbox]
                                     del segmentation_nd
+                                if not area:
+                                    from shapely.geometry import Polygon
+                                    area = Polygon(segmentation).area
                                 segmentation = [e for p in segmentation for e in p]
 
                                 if bbox != []:
@@ -288,7 +297,7 @@ class COCO(IVAS):
 
                             coco_anno["annotations"].append(coco_anno_info)
             except Exception as e:
-                raise "{} {}".format(name_without_suffix, e)
+                raise ValueError("{}: {}".format(name_without_suffix, e)) from e
 
         categories_dict = sorted(categories_dict.items(), key=lambda x: x[1])
         coco_anno["categories"] = [
@@ -296,11 +305,8 @@ class COCO(IVAS):
             for name, id in categories_dict
         ]
 
-        with open(annotation_file, "w", encoding="utf-8") as f:
-            try:
-                dump(coco_anno, f, indent=4, ensure_ascii=False)
-                print("Save COCO json finished.")
-            except Exception as e:
-                print("Save COCO json error: {}".format(e))
+        from IVAS.utils.persistence import atomic_write_bytes
+        from json import dumps
+        atomic_write_bytes(annotation_file, dumps(coco_anno, indent=4, ensure_ascii=False).encode("utf-8"))
 
         return True

@@ -33,7 +33,7 @@ setup(
     license="Apache2.0",
     packages=find_packages(exclude=["test", "test.*"]),
     include_package_data=True,
-    python_requires=">=3.8",  # python 版本要求
+    python_requires=">=3.10",  # Bundled SAM3 modules evaluate PEP 604 annotations.
     install_requires=[  # 必须直接指明，不然pip包不会自动安装
         "imgviz",
         "scikit-image",
@@ -70,8 +70,6 @@ setup(
         "License :: OSI Approved :: Apache Software License",
         "Operating System :: OS Independent",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
     ],

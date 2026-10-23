@@ -2,7 +2,6 @@
 # @Maintainer: zack zhao
 
 from PIL import Image
-from segment_any.segment_any import SegAny
 import cv2
 import numpy as np
 import os
@@ -194,12 +193,6 @@ def mask_to_polygon(mask: np.ndarray):
         mask, cv2.RETR_EXTERNAL, contour_method
     )
 
-    if contours:
-        largest_contour = max(
-            contours, key=cv2.contourArea
-        )  # 只保留面积最大的轮廓
-        contours = [largest_contour]
-
     # polydp
     epsilon_factor = 0.001
     polydp_contours = []
@@ -225,6 +218,7 @@ def text_prompt_and_save_to_ivas_json(segany, prompts, images_root):
 
             # 预测
             image = Image.open(image_path).convert("RGB")
+            next_group = 1
             for prompt in prompts:
                 masks, scores = segany.predictor.predict_with_text_prompt(image, prompt)
 
@@ -234,21 +228,17 @@ def text_prompt_and_save_to_ivas_json(segany, prompts, images_root):
                 for i in range(num_masks):
                     # mask转轮廓
                     contours, hierarchy = mask_to_polygon(masks[i])
-                    contour = contours[0]
-
-                    # 轮廓转polygon顶点
-                    segmentation = []
-                    for point in contour:
-                        x, y = point[0]
-                        x = max(0.1, x)
-                        y = max(0.1, y)
-                        segmentation.append([int(x), int(y)])
-
-                    # 新建目标
-                    obj = Object(category=prompt, group=1, segmentation=segmentation, area=0, layer=1, bbox=[], iscrowd=False,
-                                 note="", is_obb=False)
-                    # 添加目标
-                    anno.objects.append(obj)
+                    for contour in contours:
+                        if len(contour) < 3:
+                            continue
+                        segmentation = [[int(point[0][0]), int(point[0][1])] for point in contour]
+                        x, y, width, height = cv2.boundingRect(contour)
+                        obj = Object(category=prompt, group=next_group, segmentation=segmentation,
+                                     area=float(cv2.contourArea(contour)), layer=1,
+                                     bbox=[x, y, x + width, y + height], iscrowd=False,
+                                     note="", is_obb=False)
+                        anno.objects.append(obj)
+                    next_group += 1
             # 保存
             anno.save_annotation()
         except Exception as e:
@@ -256,6 +246,7 @@ def text_prompt_and_save_to_ivas_json(segany, prompts, images_root):
 
 
 if __name__ == '__main__':
+    from segment_any.segment_any import SegAny
     import argparse
     parser = argparse.ArgumentParser(
         description="使用文本提示词调用SAM3模型，对图片目录中的图片进行自动分割，生成IVAS格式的标注JSON文件。",

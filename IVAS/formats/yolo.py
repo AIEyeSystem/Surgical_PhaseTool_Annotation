@@ -2,6 +2,8 @@
 # @Maintainer: zack zhao
 
 import os
+import io
+from IVAS.utils.persistence import atomic_write_bytes
 
 from PIL import Image
 import numpy as np
@@ -21,6 +23,7 @@ class YOLO(IVAS):
     """
 
     def __init__(self):
+        super().__init__()
         self.keep_crowd = True
         self.ignore_background = False  # only work when ivas2yolo
 
@@ -94,7 +97,7 @@ class YOLO(IVAS):
                 )
 
             except Exception as e:
-                raise "{} {}".format(name_without_suffix, e)
+                raise ValueError("{}: {}".format(name_without_suffix, e)) from e
         return True
 
     @staticmethod
@@ -237,6 +240,10 @@ class YOLO(IVAS):
                 obj = self.ANNO.OBJ()
 
                 parts = line.split()  # split each line
+                if not parts:
+                    continue
+                if len(parts) < 7 or len(parts) % 2 != 1:
+                    raise ValueError("YOLO segmentation needs at least three x/y pairs")
                 class_index = int(parts[0])  # get the class index
                 yolo_segmentation = list(
                     map(float, parts[1:])
@@ -280,7 +287,7 @@ class YOLO(IVAS):
             save_path (str): the path of the txt file.
             cates_index_dict (dict): the cates index dictionary. {category: index} .
         """
-        with open(save_path, "w", encoding="utf-8") as f:
+        with io.StringIO() as f:
             objects = anno.objs
 
             objects_groups = [obj.group for obj in objects]
@@ -315,6 +322,10 @@ class YOLO(IVAS):
                         segmentation = [c for xy in segmentation for c in xy]
                         segmentations.append(segmentation)
 
+                    if not segmentations:
+                        continue
+                    if class_index is None:
+                        raise ValueError("Unknown category: {}".format(cat))
                     if len(segmentations) > 1:
                         segmentations = self.merge_multi_segment(segmentations)
                         segmentations = (
@@ -325,4 +336,5 @@ class YOLO(IVAS):
 
                     s = "{}" + " {}" * len(segmentations) + "\n"
                     f.write(s.format(class_index, *segmentations))
+            atomic_write_bytes(save_path, f.getvalue().encode("utf-8"))
         return True

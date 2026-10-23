@@ -24,6 +24,8 @@ from typing import Any, Dict, Iterable, Iterator, List, Mapping, Optional, Seque
 
 from IVAS import __version__
 from IVAS.branding import LEGACY_VIDEO_PROJECT_NAMES, VIDEO_PROJECT_NAME
+from IVAS.utils.persistence import atomic_write_bytes, project_write_lock
+from IVAS.video.merge import merge_projects, ProjectConflictError
 
 
 SCHEMA_VERSION = 3
@@ -368,6 +370,7 @@ class UnifiedVideoProjectStore:
         before_normalise = copy.deepcopy(self.project)
         self._normalise()
         self.is_dirty = self.project != before_normalise
+        self._persisted_project = copy.deepcopy(before_normalise)
 
     @classmethod
     def create(
@@ -413,6 +416,7 @@ class UnifiedVideoProjectStore:
             "audit": [],
         }
         store = cls(project_path, project)
+        store._persisted_project = None
         store._append_audit("project_created", "Created unified video project")
         store.is_dirty = True
         return store
@@ -544,9 +548,14 @@ class UnifiedVideoProjectStore:
 
     @classmethod
     def load(cls, project_path: Path) -> "UnifiedVideoProjectStore":
+        with project_write_lock(project_path):
+            return cls._load_locked(project_path)
+
+    @classmethod
+    def _load_locked(cls, project_path: Path) -> "UnifiedVideoProjectStore":
         path = Path(project_path)
         try:
-            return cls._load_file(path)
+            store = cls._load_file(path)
         except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError) as error:
             backup = path.with_name("{}.previous{}".format(path.stem, path.suffix))
             if not backup.is_file():
@@ -564,7 +573,9 @@ class UnifiedVideoProjectStore:
             store.recovery_source = backup
             store._append_audit("project_recovered", "Recovered from backup")
             store.is_dirty = True
-            return store
+        from IVAS.video.transactions import recover_label_transactions
+        recover_label_transactions(store)
+        return store
 
     @classmethod
     def _load_file(cls, path: Path) -> "UnifiedVideoProjectStore":
@@ -902,6 +913,7 @@ class UnifiedVideoProjectStore:
             "is_dirty": self.is_dirty,
             "recovered_from_backup": self.recovered_from_backup,
             "recovery_source": self.recovery_source,
+            "persisted_project": copy.deepcopy(self._persisted_project),
         }
 
     def _restore_runtime_snapshot(self, snapshot: Mapping[str, Any]) -> None:
@@ -912,6 +924,7 @@ class UnifiedVideoProjectStore:
         self.is_dirty = bool(snapshot["is_dirty"])
         self.recovered_from_backup = bool(snapshot["recovered_from_backup"])
         self.recovery_source = snapshot["recovery_source"]
+        self._persisted_project = copy.deepcopy(snapshot["persisted_project"])
 
     @contextmanager
     def transaction(self) -> Iterator["UnifiedVideoProjectStore"]:
@@ -1904,6 +1917,10 @@ class UnifiedVideoProjectStore:
         candidate_track_id = str(track_id or candidate_object_id)
         for raw in self.project["instances"]:
             if raw.get("object_id") == candidate_object_id or raw.get("track_id") == candidate_track_id:
+                if review_status == "reviewed" and raw.get("review_status") != "reviewed":
+                    raw["review_status"] = "reviewed"
+                    raw["updated_at"] = utc_now()
+                    self._changed("tracking_instance_reviewed", "Reviewed tracked instance", raw["object_id"])
                 return dict(raw)
         item = {
             "object_id": candidate_object_id,
@@ -2015,42 +2032,54 @@ class UnifiedVideoProjectStore:
         return True
 
     def save(self) -> None:
+        with project_write_lock(self.path):
+            self._save_locked()
+
+    def refresh(self) -> None:
+        """Accept disk updates without discarding this editor's temporal history."""
+        with project_write_lock(self.path):
+            remote = self._load_file(self.path)._persisted_project
+            merged = merge_projects(self._persisted_project, self.project, remote)
+            self.project = merged
+            self._normalise()
+            self._persisted_project = copy.deepcopy(remote)
+            self.is_dirty = self.project != remote
+
+    def _save_locked(self) -> None:
         if not self.is_dirty and self.path.is_file():
             return
-        self._normalise()
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.frames_directory.mkdir(parents=True, exist_ok=True)
-        self.labels_directory.mkdir(parents=True, exist_ok=True)
-        self.tracking_directory.mkdir(parents=True, exist_ok=True)
-        payload = json.dumps(self.project, ensure_ascii=False, indent=2)
-        backup = self.path.with_name("{}.previous{}".format(self.path.stem, self.path.suffix))
-        preserve_backup = bool(
-            self.recovered_from_backup
-            and self.recovery_source
-            and self.recovery_source.resolve() == backup.resolve()
-        )
-        if self.path.exists() and not preserve_backup:
-            try:
-                backup.write_bytes(self.path.read_bytes())
-            except OSError:
-                pass
-        descriptor, temporary = tempfile.mkstemp(
-            prefix=".{}-".format(self.path.stem),
-            suffix=".tmp",
-            dir=str(self.path.parent),
-        )
+        original = self.project
+        self.project = copy.deepcopy(original)
         try:
-            with os.fdopen(descriptor, "w", encoding="utf-8", newline="") as stream:
-                stream.write(payload)
-                stream.flush()
-                os.fsync(stream.fileno())
-            os.replace(temporary, self.path)
-        except Exception:
-            try:
-                os.unlink(temporary)
-            except OSError:
-                pass
+            self._normalise()
+            if self.path.is_file():
+                try:
+                    remote = self._load_file(self.path)._persisted_project
+                except (OSError, ValueError, KeyError, TypeError):
+                    if not self.recovered_from_backup:
+                        raise
+                    remote = self._persisted_project
+                if self._persisted_project is None:
+                    raise ProjectConflictError("A project already exists at {}".format(self.path))
+                self.project = merge_projects(self._persisted_project, self.project, remote)
+            elif self._persisted_project is not None and self._persisted_project.get("revision"):
+                raise ProjectConflictError("The project was removed by another writer")
+            self._normalise()
+            self.project["revision"] = int(self.project.get("revision", 0)) + 1
+            self.frames_directory.mkdir(parents=True, exist_ok=True)
+            self.labels_directory.mkdir(parents=True, exist_ok=True)
+            self.tracking_directory.mkdir(parents=True, exist_ok=True)
+            payload = json.dumps(self.project, ensure_ascii=False, indent=2).encode("utf-8")
+            backup = self.path.with_name("{}.previous{}".format(self.path.stem, self.path.suffix))
+            preserve_backup = bool(self.recovered_from_backup and self.recovery_source
+                                   and self.recovery_source.resolve() == backup.resolve())
+            if self.path.exists() and not preserve_backup:
+                atomic_write_bytes(backup, self.path.read_bytes())
+            atomic_write_bytes(self.path, payload)
+        except BaseException:
+            self.project = original
             raise
         self.is_dirty = False
         self.recovered_from_backup = False
         self.recovery_source = None
+        self._persisted_project = copy.deepcopy(self.project)

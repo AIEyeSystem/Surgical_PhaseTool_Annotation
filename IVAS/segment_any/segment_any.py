@@ -359,6 +359,7 @@ class SegAnyVideo:
         self.model_source = None
         checkpoint_name = os.path.basename(os.fspath(checkpoint)).lower()
 
+        self.inference_lock = threading.RLock()
         self.inference_state = {}
 
         if "sam2" in checkpoint_name:
@@ -416,6 +417,10 @@ class SegAnyVideo:
         print("--" * 20)
 
     def release(self):
+        with self.inference_lock:
+            self._release_state()
+
+    def _release_state(self):
         """
         Release inference state to free GPU memory used by video frames
         and tracking outputs.
@@ -518,7 +523,8 @@ class SegAnyVideo:
 
             if async_loading_frames:
                 lazy_images = AsyncVideoFrameLoader(
-                    img_paths, image_size, offload_video_to_cpu, img_mean, img_std
+                    img_paths, image_size, offload_video_to_cpu, img_mean, img_std,
+                    compute_device=torch.device(self.device)
                 )
                 # return lazy_images, lazy_images.video_height, lazy_images.video_width
                 images, video_height, video_width = (
@@ -535,9 +541,9 @@ class SegAnyVideo:
                         img_path, image_size
                     )
                 if not offload_video_to_cpu:
-                    images = images.cuda()
-                    img_mean = img_mean.cuda()
-                    img_std = img_std.cuda()
+                    images = images.to(self.device)
+                    img_mean = img_mean.to(self.device)
+                    img_std = img_std.to(self.device)
 
                 images -= img_mean
                 images /= img_std
@@ -561,7 +567,7 @@ class SegAnyVideo:
             if offload_state_to_cpu:
                 inference_state["storage_device"] = torch.device("cpu")
             else:
-                inference_state["storage_device"] = torch.device("cuda")
+                inference_state["storage_device"] = torch.device(self.device)
             # inputs on each frame
             inference_state["point_inputs_per_obj"] = {}
             inference_state["mask_inputs_per_obj"] = {}

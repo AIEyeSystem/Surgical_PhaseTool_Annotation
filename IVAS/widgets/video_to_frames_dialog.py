@@ -7,12 +7,14 @@ from pathlib import Path
 import cv2
 from PyQt5 import QtCore, QtWidgets
 from IVAS.widgets.responsive import ResponsiveDialog
+from IVAS.widgets.background import TaskDialogMixin
+from IVAS.utils.batch import video_to_frames
 
 from IVAS.ui.video_to_frames import Ui_Dialog
 from IVAS.utils.check import has_chinese
 
 
-class Video2FramesDialog(ResponsiveDialog, Ui_Dialog):
+class Video2FramesDialog(TaskDialogMixin, ResponsiveDialog, Ui_Dialog):
     def __init__(self, parent, mainwindow):
         super().__init__(parent=parent)
         self.setupUi(self)
@@ -41,7 +43,7 @@ class Video2FramesDialog(ResponsiveDialog, Ui_Dialog):
                 height = int(camera.get(cv2.CAP_PROP_FRAME_HEIGHT))
                 frame_count = int(camera.get(cv2.CAP_PROP_FRAME_COUNT))
 
-                self.spinBox_step.setValue(fps)
+                self.spinBox_step.setValue(max(1, fps))
 
                 self.textBrowser.append("Frames num   : {}".format(frame_count))
                 self.textBrowser.append("Frames width : {}".format(width))
@@ -50,6 +52,10 @@ class Video2FramesDialog(ResponsiveDialog, Ui_Dialog):
             except Exception as e:
                 self.textBrowser.append("ERROR | {}".format(e))
 
+            finally:
+                if "camera" in locals():
+                    camera.release()
+
         else:
             self.video_path = None
             self.lineEdit_video_path.clear()
@@ -57,10 +63,6 @@ class Video2FramesDialog(ResponsiveDialog, Ui_Dialog):
     def open_dir(self):
         dir = QtWidgets.QFileDialog.getExistingDirectory(self, caption="Open dir")
         if dir:
-            if has_chinese(dir):
-                self.textBrowser.append(f"ERROR | Not supported Chinese path. But get {dir}")
-                return
-
             self.save_root = dir
             self.lineEdit_frames_root.setText(dir)
         else:
@@ -68,34 +70,10 @@ class Video2FramesDialog(ResponsiveDialog, Ui_Dialog):
             self.lineEdit_frames_root.clear()
 
     def start(self):
-        if self.video_path is None:
-            self.textBrowser.append("ERROR | Video path is None!")
-            return
-        if self.save_root is None:
-            self.textBrowser.append("ERROR | Save root is None!")
-            return
-
-        video_name: str = os.path.split(self.video_path)[-1]
-        video_name_without_suffix = video_name.split(".")[0]
-
-        camera = cv2.VideoCapture(self.video_path)
-        frame_count = int(camera.get(cv2.CAP_PROP_FRAME_COUNT))
+        video_path = self.lineEdit_video_path.text().strip()
+        save_root = self.lineEdit_frames_root.text().strip()
         step = self.spinBox_step.value()
-
-        save_indices = list(range(0, frame_count, step))
-        self.progressBar.setMaximum(len(save_indices))
-
-        for index, frame_idx in enumerate(save_indices):
-            try:
-                camera.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)  # 直接跳转
-                res, image = camera.read()
-                frame_path = Path(self.save_root) / f"{video_name_without_suffix}_{frame_idx:0>12}.jpg"
-                cv2.imwrite(
-                    str(frame_path),
-                    image,
-                )
-                self.textBrowser.append(f"Frame {frame_idx:0>12} - {frame_path}")
-            except Exception as e:
-                self.textBrowser.append(f"ERROR | frame: {frame_idx:0>12} - {e}")
-            self.progressBar.setValue(index + 1)
-        camera.release()
+        if not video_path or not save_root or not os.path.isfile(video_path) or not os.path.isdir(save_root) or step <= 0:
+            self.textBrowser.append("Error: select valid paths and a positive frame step.")
+            return
+        self.start_task(lambda cancelled, progress: video_to_frames(video_path, save_root, step, cancelled, progress))

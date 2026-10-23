@@ -14,13 +14,13 @@ PLUGIN_ENTRYPOINT_GROUP = "ivas.plugins"
 LEGACY_PLUGIN_ENTRYPOINT_GROUPS = ("ivat.plugins",)
 
 ANNOTATION_FORMAT = "IVAS"
-LEGACY_ANNOTATION_FORMATS = frozenset({"IVAT"})
+LEGACY_ANNOTATION_FORMATS = frozenset({"ISAT", "IVAT"})
 SUPPORTED_ANNOTATION_FORMATS = frozenset(
     {ANNOTATION_FORMAT, *LEGACY_ANNOTATION_FORMATS}
 )
 
 CATEGORY_CONFIG_NAME = "ivas.yaml"
-LEGACY_CATEGORY_CONFIG_NAMES = ("ivat.yaml", "ivas_legacy_categories.yaml")
+LEGACY_CATEGORY_CONFIG_NAMES = ("ivat.yaml", "isat.yaml", "ivas_legacy_categories.yaml")
 VIDEO_PROJECT_NAME = "project.ivas.json"
 LEGACY_VIDEO_PROJECT_NAMES = ("project.ivat.json",)
 

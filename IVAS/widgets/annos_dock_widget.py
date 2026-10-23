@@ -71,11 +71,13 @@ class AnnosDockWidget(QtWidgets.QWidget, Ui_Form):
         layout.addWidget(check_box)
 
         label_color = QtWidgets.QLabel()
+        label_color.setObjectName("label_color")
         label_color.setFixedWidth(10)
         label_color.setStyleSheet("background-color: {};".format(color))
         layout.addWidget(label_color)
 
         category = QtWidgets.QLabel(self.mainwindow.category_display_name(polygon.category))
+        category.setObjectName("category")
         category.setToolTip(category.text())
 
         group = QtWidgets.QLabel("{}".format(polygon.group))
@@ -97,6 +99,20 @@ class AnnosDockWidget(QtWidgets.QWidget, Ui_Form):
         item_widget.setLayout(layout)
         fit_list_item(item, item_widget)
         return item, item_widget
+
+    def update_polygon_category(self, polygon):
+        """Refresh a category in place, retaining selection and group filters."""
+        item = self.polygon_item_dict.get(polygon)
+        if item is None:
+            return
+        widget = self.listWidget.itemWidget(item)
+        category = widget.findChild(QtWidgets.QLabel, "category")
+        category.setText(self.mainwindow.category_display_name(polygon.category))
+        category.setToolTip(category.text())
+        color = self.mainwindow.category_color_dict.get(polygon.category, "#6F737A")
+        widget.findChild(QtWidgets.QLabel, "label_color").setStyleSheet(
+            "background-color: {};".format(color))
+        fit_list_item(item, widget)
 
     def update_listwidget(self):
         """Update the annotations list widget."""
@@ -135,18 +151,21 @@ class AnnosDockWidget(QtWidgets.QWidget, Ui_Form):
         self.label_polygons_num.setText(str(len(self.mainwindow.polygons)))
         self.label_groups_num.setText(str(len(self.unique_groups)))
 
-    def listwidget_add_polygon(self, polygon: Polygon):
+    def listwidget_add_polygon(self, polygon: Polygon, *, notify: bool = True):
         """
         Add a new item to the list widget.
 
         Arguments:
             polygon (Polygon): polygon
+            notify (bool): Mark the image changed; use False when the caller
+                will notify after adding all completed shapes.
         """
         item, item_widget = self.generate_item_and_itemwidget(polygon)
         self.listWidget.addItem(item)
         self.listWidget.setItemWidget(item, item_widget)
         self.polygon_item_dict[polygon] = item
-        self.mainwindow.set_saved_state(False)
+        if notify:
+            self.mainwindow.set_saved_state(False)
 
         if str(polygon.group) not in self.unique_groups:
             self.unique_groups.add(str(polygon.group))
@@ -178,7 +197,7 @@ class AnnosDockWidget(QtWidgets.QWidget, Ui_Form):
         if polygon.isSelected():
             if not item.isSelected():
                 item.setSelected(True)
-                self.listWidget.setCurrentItem(item)
+                self.listWidget.setCurrentItem(item, QtCore.QItemSelectionModel.NoUpdate)
         if not polygon.isSelected():
             if item.isSelected():
                 item.setSelected(False)

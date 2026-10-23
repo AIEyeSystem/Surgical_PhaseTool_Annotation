@@ -1,5 +1,7 @@
 import os
 from enum import Enum
+from pathlib import Path
+from IVAS.utils.persistence import atomic_write_bytes
 
 import yaml
 
@@ -16,29 +18,16 @@ __all__ = [
 
 IVAS_ROOT = os.path.split(os.path.abspath(__file__))[0]
 """Project root - IVAS/"""
-SOFTWARE_CONFIG_FILE = os.path.join(IVAS_ROOT, "software.yaml")
-"""Software config file - IVAS/software.yaml"""
-CONFIG_FILE = os.path.join(IVAS_ROOT, CATEGORY_CONFIG_NAME)
-"""Default IVAS category configuration file."""
-CHECKPOINT_PATH = os.path.join(IVAS_ROOT, "checkpoints")
-"""Checkpoints save root - IVAS/checkpoints"""
-
-os.makedirs(os.path.join(CHECKPOINT_PATH, "tmp"), exist_ok=True)
-
-if not os.path.exists(SOFTWARE_CONFIG_FILE):
-    with open(SOFTWARE_CONFIG_FILE, "w") as f:
-        pass
-
-if not os.path.exists(CONFIG_FILE):
-    legacy_config = next(
-        (os.path.join(IVAS_ROOT, name) for name in LEGACY_CATEGORY_CONFIG_NAMES
-         if os.path.isfile(os.path.join(IVAS_ROOT, name))),
-        None,
-    )
-    with open(CONFIG_FILE, "wb") as f:
-        if legacy_config is not None:
-            with open(legacy_config, "rb") as source:
-                f.write(source.read())
+# Source checkouts retain portable paths; installed/read-only packages use user data.
+# Importing this module never creates directories or modifies package resources.
+_package_root = Path(IVAS_ROOT)
+_installed = any(part in {"site-packages", "dist-packages"} for part in _package_root.parts)
+_user_root = Path(os.environ.get("LOCALAPPDATA") or os.environ.get("XDG_DATA_HOME") or Path.home() / ".local/share") / "IVAS"
+DATA_ROOT = Path(os.environ.get("IVAS_DATA_DIR") or (
+    _user_root if _installed or not os.access(IVAS_ROOT, os.W_OK) else _package_root))
+SOFTWARE_CONFIG_FILE = str(DATA_ROOT / "software.yaml")
+CONFIG_FILE = str(DATA_ROOT / CATEGORY_CONFIG_NAME)
+CHECKPOINT_PATH = str(DATA_ROOT / "checkpoints")
 
 
 def load_config(file: str) -> dict:
@@ -51,8 +40,22 @@ def load_config(file: str) -> dict:
     Returns:
         dict: config dict
     """
-    with open(file, "rb") as f:
-        cfg = yaml.load(f.read(), Loader=yaml.FullLoader)
+    path = Path(file)
+    if not path.is_file():
+        candidates = []
+        if path.name == CATEGORY_CONFIG_NAME:
+            candidates.extend(path.with_name(name) for name in LEGACY_CATEGORY_CONFIG_NAMES)
+        if path.parent == DATA_ROOT:
+            candidates.append(_package_root / path.name)
+        path = next((candidate for candidate in candidates if candidate.is_file()), path)
+        if not path.is_file():
+            return {}
+    try:
+        cfg = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except yaml.YAMLError as error:
+        raise ValueError("Invalid YAML in {}: {}".format(path, error)) from error
+    if not isinstance(cfg, dict):
+        raise ValueError("Configuration must be a mapping: {}".format(path))
     return cfg
 
 
@@ -64,9 +67,10 @@ def save_config(cfg: dict, file: str) -> None:
         cfg (dict): config dict
         file (str): config file path
     """
-    s = yaml.dump(cfg, allow_unicode=True)
-    with open(file, "w", encoding="utf-8") as f:
-        f.write(s)
+    if not isinstance(cfg, dict):
+        raise ValueError("Configuration must be a mapping")
+    s = yaml.safe_dump(cfg, allow_unicode=True)
+    atomic_write_bytes(file, s.encode("utf-8"))
 
 
 class STATUSMode(Enum):

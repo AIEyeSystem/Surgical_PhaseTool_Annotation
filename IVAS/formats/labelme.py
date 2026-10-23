@@ -2,7 +2,8 @@
 # @Maintainer: zack zhao
 
 import os
-from json import dump, load
+from json import dump, load, dumps
+from IVAS.utils.persistence import atomic_write_bytes
 
 import tqdm
 
@@ -19,6 +20,7 @@ class LABELME(IVAS):
     """
 
     def __init__(self):
+        super().__init__()
         self.keep_crowd = True
 
     def read_from_LABELME(self, json_root: str) -> bool:
@@ -71,7 +73,7 @@ class LABELME(IVAS):
                 )
 
             except Exception as e:
-                raise "{} {}".format(name_without_suffix, e)
+                raise ValueError("{}: {}".format(name_without_suffix, e)) from e
         return True
 
     def save_one_labelme_json(self, anno: IVAS.ANNO, json_path) -> bool:
@@ -107,15 +109,14 @@ class LABELME(IVAS):
             shape = {}
             shape["label"] = category
             shape["points"] = segmentation
-            shape["group_id"] = int(group) if group else None
+            shape["group_id"] = int(group) if group is not None else None
             shape["description"] = note
             shape["shape_type"] = "polygon"
             shape["flags"] = {}
 
             labelme_anno["shapes"].append(shape)
 
-        with open(json_path, "w", encoding="utf-8") as f:
-            dump(labelme_anno, f, indent=4, ensure_ascii=False)
+        atomic_write_bytes(json_path, dumps(labelme_anno, indent=4, ensure_ascii=False).encode("utf-8"))
         return True
 
     def load_one_labelme_json(self, json_path: str) -> IVAS.ANNO:
@@ -138,11 +139,13 @@ class LABELME(IVAS):
             anno.info.name = dataset.get("imagePath")
             anno.info.height = dataset.get("imageHeight")
             anno.info.width = dataset.get("imageWidth")
-            anno.info.depth = None
+            anno.info.depth = 3
             anno.info.note = ""
             shapes = dataset.get("shapes", {})
 
             objs = []
+            used_groups = {int(shape["group_id"]) for shape in shapes if shape.get("group_id") is not None}
+            next_group = max(used_groups | {0}) + 1
             for shape in shapes:
                 # 只加载多边形
                 is_polygon = shape.get("shape_type", "") == "polygon"
@@ -151,15 +154,16 @@ class LABELME(IVAS):
                 obj = self.ANNO.OBJ()
 
                 obj.category = shape.get("label", "unknow")
-                obj.group = shape.get("group_id", 0)
+                obj.group = shape.get("group_id")
                 if obj.group is None:
-                    obj.group = 0
+                    obj.group = next_group
+                    next_group += 1
                 obj.segmentation = shape.get("points", [])
                 obj.area = shape.get("area", 0)
                 obj.layer = shape.get("layer", 1)
                 obj.bbox = shape.get("bbox", [])
                 obj.iscrowd = shape.get("iscrowd", False)
-                obj.note = shape.get("note", "")
+                obj.note = shape.get("description", shape.get("note", "")) or ""
 
                 objs.append(obj)
             anno.objs = tuple(objs)

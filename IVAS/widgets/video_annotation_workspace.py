@@ -2376,7 +2376,8 @@ class VideoAnnotationWorkspace(QtWidgets.QWidget):
             track_id=track_id,
             review_status="reviewed",
         )
-        if obj.object_id != instance["object_id"] or obj.track_id != instance["track_id"]:
+        if (obj.object_id != instance["object_id"] or obj.track_id != instance["track_id"]
+                or obj.review_status != "reviewed"):
             obj.object_id = instance["object_id"]
             obj.track_id = instance["track_id"]
             obj.source = obj.source or "manual"
@@ -2459,7 +2460,7 @@ class VideoAnnotationWorkspace(QtWidgets.QWidget):
             return
         if self.store is None:
             return
-        self.store = UnifiedVideoProjectStore.load(self.store.path)
+        self.store.refresh()
         self._staged_tracking_run_id = run_id
         self.start_tracking_action.setEnabled(True)
         self._refresh_project_views()
@@ -2469,6 +2470,12 @@ class VideoAnnotationWorkspace(QtWidgets.QWidget):
         if token != self._project_token or self.sender() is not self._tracking_worker:
             return
         self.start_tracking_action.setEnabled(True)
+        try:
+            if self.store is not None:
+                self.store.refresh()
+                self._refresh_project_views()
+        except Exception as error:
+            QtWidgets.QMessageBox.critical(self, "Project refresh failed", str(error))
         if message == "cancelled":
             self.status_message.emit("追踪已取消；人工标注未被修改。")
         else:
@@ -2538,7 +2545,7 @@ class VideoAnnotationWorkspace(QtWidgets.QWidget):
                 label_path,
                 replace_manual=bool(run.get("replace_manual", False)),
             )
-            self.store = UnifiedVideoProjectStore.load(self.store.path)
+            self.store.refresh()
             self._refresh_project_views()
             self.status_message.emit("追踪结果已提交；仍可从更多菜单回滚。")
         except Exception as error:
@@ -2566,7 +2573,7 @@ class VideoAnnotationWorkspace(QtWidgets.QWidget):
             return
         try:
             VideoTrackingService(self.store).rollback(run["id"])
-            self.store = UnifiedVideoProjectStore.load(self.store.path)
+            self.store.refresh()
             self._refresh_project_views()
             self.status_message.emit("追踪提交已回滚。")
         except Exception as error:

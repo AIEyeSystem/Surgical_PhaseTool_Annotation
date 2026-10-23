@@ -4,10 +4,14 @@
 import os
 from json import dump, load
 from typing import Dict, Tuple
+from IVAS.annotation import Object
+from IVAS.utils.persistence import atomic_write_bytes
+import json
 
 import imgviz
 import tqdm
 import yaml
+from IVAS.configs import save_config
 
 from IVAS.branding import (
     ANNOTATION_FORMAT,
@@ -42,7 +46,7 @@ class IVAS:
             r"""Contains metadata about the dataset and image.
 
             Attributes:
-                description (str): "IVAS" for new files; legacy "IVAT" is accepted.
+                description (str): "IVAS" for new files; "ISAT" and "IVAT" are accepted.
                 folder (str): The directory where the images are stored.
                 name (str): The name of the image file
                 width (int): The dimensions of the image.
@@ -59,7 +63,7 @@ class IVAS:
             depth = None
             note = ""
 
-        class OBJ:
+        class OBJ(Object):
             r"""Lists all the annotated objects in the image.
 
             Attributes:
@@ -82,11 +86,17 @@ class IVAS:
             iscrowd = False
             note = ""
 
+            def __init__(self):
+                super().__init__("", 0, [], 0, 2, [])
+
         info: INFO
         objs: Tuple[OBJ, ...] = ()
 
-    annos: Dict[str, ANNO] = {}  # name, ANNO (the name without the suffix)
     cates: Tuple[str] = ()
+
+    def __init__(self):
+        self.annos = {}
+        self.cates = ()
 
     def read_from_IVAS(self, json_root: str) -> bool:
         r"""Load annotations from a directory of json files.
@@ -108,7 +118,7 @@ class IVAS:
         if category_path is not None:
             cates = []
             with open(category_path, "r", encoding="utf-8") as f:
-                cfg = yaml.load(f.read(), Loader=yaml.FullLoader)
+                cfg = yaml.safe_load(f.read()) or {}
             for label in cfg.get("label", []):
                 cates.append(label.get("name"))
             self.cates = tuple(cates)
@@ -142,16 +152,14 @@ class IVAS:
         self.cates = sorted(self.cates)
         categories = []
         for index, cat in enumerate(self.cates):
-            r, g, b = cmap[index + 1]
+            r, g, b = cmap[(index + 1) % len(cmap)]
             categories.append(
                 {
                     "name": cat if isinstance(cat, str) else str(cat),
                     "color": "#{:02x}{:02x}{:02x}".format(r, g, b),
                 }
             )
-        s = yaml.dump({"label": categories}, allow_unicode=True)
-        with open(os.path.join(json_root, CATEGORY_CONFIG_NAME), "w", encoding="utf-8") as f:
-            f.write(s)
+        save_config({"label": categories}, os.path.join(json_root, CATEGORY_CONFIG_NAME))
 
         return True
 
@@ -203,27 +211,7 @@ class IVAS:
             objs = []
             objects = dataset.get("objects", [])
             for obj in objects:
-                category = obj.get("category", "UNKNOW")
-                group = obj.get("group", 0)
-                if group is None:
-                    group = 0
-                segmentation = obj.get("segmentation", [])
-                iscrowd = obj.get("iscrowd", False)
-                note = obj.get("note", "")
-                area = obj.get("area", 0)
-                layer = obj.get("layer", 2)
-                bbox = obj.get("bbox", [])
-
-                obj = self.ANNO.OBJ()
-                obj.category = category
-                obj.group = group
-                obj.segmentation = segmentation
-                obj.area = area
-                obj.layer = layer
-                obj.bbox = bbox
-                obj.iscrowd = iscrowd
-                obj.note = note
-                objs.append(obj)
+                objs.append(Object.from_dict(obj))
 
             anno.objs = tuple(objs)
         return anno
@@ -248,19 +236,7 @@ class IVAS:
         dataset["info"]["note"] = anno.info.note
         dataset["objects"] = []
         for obj in anno.objs:
-            object = {}
-            object["category"] = (
-                obj.category if isinstance(obj.category, str) else str(obj.category)
-            )
-            object["group"] = obj.group
-            object["segmentation"] = obj.segmentation
-            object["area"] = obj.area
-            object["layer"] = obj.layer
-            object["bbox"] = obj.bbox
-            object["iscrowd"] = obj.iscrowd
-            object["note"] = obj.note
-            dataset["objects"].append(object)
+            dataset["objects"].append(obj.to_dict())
 
-        with open(save_path, "w", encoding="utf-8") as f:
-            dump(dataset, f, indent=4, ensure_ascii=False)
+        atomic_write_bytes(save_path, json.dumps(dataset, indent=4, ensure_ascii=False).encode("utf-8"))
         return True

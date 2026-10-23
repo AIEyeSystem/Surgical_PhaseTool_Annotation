@@ -471,7 +471,7 @@ class AnnotationScene(QtWidgets.QGraphicsScene):
             self.addItem(self.current_graph)
 
     def finish_draw(self):
-        """Finish annotation. Convert mask to polygons when using sam, if the number of vertices less than 3, delete polygon."""
+        """Finish a valid shape or SAM mask and immediately save the current image."""
 
         category = self.mainwindow.current_category
         group = self.mainwindow.current_group
@@ -553,7 +553,7 @@ class AnnotationScene(QtWidgets.QGraphicsScene):
                     # 添加新polygon
                     self.mainwindow.polygons.append(self.current_graph)
                     self.mainwindow.annos_dock_widget.listwidget_add_polygon(
-                        self.current_graph
+                        self.current_graph, notify=False
                     )
 
                     self.current_graph = None
@@ -616,7 +616,7 @@ class AnnotationScene(QtWidgets.QGraphicsScene):
 
             # 添加新polygon
             self.mainwindow.polygons.append(self.current_graph)
-            self.mainwindow.annos_dock_widget.listwidget_add_polygon(self.current_graph)
+            self.mainwindow.annos_dock_widget.listwidget_add_polygon(self.current_graph, notify=False)
 
         elif self.draw_mode == DRAWMode.OBB:
             if self.current_graph is None:
@@ -666,7 +666,7 @@ class AnnotationScene(QtWidgets.QGraphicsScene):
                 )
 
             self.mainwindow.polygons.append(graph)
-            self.mainwindow.annos_dock_widget.listwidget_add_polygon(graph)
+            self.mainwindow.annos_dock_widget.listwidget_add_polygon(graph, notify=False)
 
         # 选择类别
         # self.mainwindow.category_choice_widget.load_cfg()
@@ -683,12 +683,15 @@ class AnnotationScene(QtWidgets.QGraphicsScene):
         self.update_mask()
 
         if len(self.mainwindow.polygons) > polygon_count_before:
-            self.mainwindow.set_saved_state(False)
+            self.mainwindow.set_saved_state(False, save_now=True)
             self.mainwindow.plugin_manager_dialog.trigger_after_annotation_created()
 
     def _clear_prompts(self):
         """Clear all prompt items (box, point, visual)."""
         self.invalidate_mask_prediction()
+        widget = getattr(self.mainwindow, "visual_prompt_dock_widget", None)
+        if widget is not None:
+            widget.invalidate_prediction()
         # prompt box clear
         if self.prompt_box_item is not None:
             self.prompt_box_item.delete()
@@ -771,6 +774,8 @@ class AnnotationScene(QtWidgets.QGraphicsScene):
                 del item
             elif isinstance(item, PolygonVertex):
                 polygon = item.parent_shape
+                if isinstance(polygon, OBB):
+                    continue
                 if polygon.vertices:
                     index = polygon.vertices.index(item)
                     item.parent_shape.removePoint(index)
@@ -791,6 +796,7 @@ class AnnotationScene(QtWidgets.QGraphicsScene):
                     del polygon
 
         if deleted_layer is not None:
+            self.mainwindow.set_saved_state(False)
             for p in self.mainwindow.polygons:
                 if p.zValue() > deleted_layer:
                     p.setZValue(p.zValue() - 1)
@@ -933,6 +939,27 @@ class AnnotationScene(QtWidgets.QGraphicsScene):
         else:
             geoms = []
 
+        # The disk format represents simple rings. Split holed results into
+        # non-overlapping pieces sharing one instance instead of filling holes.
+        from shapely.ops import triangulate
+        parts = []
+        for geom in geoms:
+            if geom.is_empty:
+                continue
+            if not geom.interiors:
+                parts.append(geom)
+                continue
+            for triangle in triangulate(geom):
+                clipped = triangle.intersection(geom)
+                candidates = [clipped] if isinstance(clipped, shapely.Polygon) else getattr(clipped, "geoms", [])
+                for part in candidates:
+                    if isinstance(part, shapely.Polygon) and not part.is_empty and part.area > 0:
+                        if part.interiors:
+                            QtWidgets.QMessageBox.warning(self.mainwindow, "Polygon warning", "Unable to represent this hole without changing its geometry.")
+                            return
+                        parts.append(part)
+        geoms = parts
+
         for geom in geoms:
             if self.current_graph is None:
                 self.current_graph = Polygon()
@@ -952,16 +979,23 @@ class AnnotationScene(QtWidgets.QGraphicsScene):
             self.current_graph.set_drawed(
                 category, group, iscrowd, note, color, layer
             )
+            self.current_graph.object_id = poly0.object_id
+            self.current_graph.track_id = poly0.track_id
+            self.current_graph.source = poly0.source
+            self.current_graph.origin_source = poly0.origin_source
+            self.current_graph.review_status = poly0.review_status
+            self.current_graph.mark_edited()
             self.mainwindow.polygons.insert(index, self.current_graph)
             self.current_graph = None
 
         # 删除旧的多边形
-        for polygon_item in self.selected_polygons_list:
+        for polygon_item in list(self.selected_polygons_list):
             self.mainwindow.polygons.remove(polygon_item)
             polygon_item.delete()
             self.removeItem(polygon_item)
             del polygon_item
         self.selected_polygons_list.clear()
+        self.mainwindow.set_saved_state(False)
 
         self.mainwindow.annos_dock_widget.update_listwidget()
 

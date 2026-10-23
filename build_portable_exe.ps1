@@ -2,7 +2,9 @@
 param(
     [switch]$SkipCheckpoint,
     [switch]$SkipSmokeTest,
-    [switch]$Clean
+    [switch]$Clean,
+    [switch]$SkipDependencyInstall,
+    [string]$PythonExe
 )
 
 $ErrorActionPreference = "Stop"
@@ -10,16 +12,18 @@ Set-StrictMode -Version Latest
 
 $RepoRoot = [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\')
 $VenvRoot = Join-Path $RepoRoot ".venv"
-$PythonExe = Join-Path $VenvRoot "python.exe"
 $SourceEnvironment = "labeling"
 $BuildRoot = Join-Path $RepoRoot "build"
-$ReleaseRoot = Join-Path $BuildRoot "IVAS"
+$DestinationRoot = Join-Path $BuildRoot "IVAS"
+$StageRoot = Join-Path $RepoRoot ("tmp\portable-" + [guid]::NewGuid().ToString("N"))
+$ReleaseRoot = Join-Path $StageRoot "IVAS"
 $WorkRoot = Join-Path $RepoRoot "tmp\pyinstaller"
 $Checkpoint = Join-Path $RepoRoot "sam3.1_multiplex_bf16.pt"
 
 # A Conda prefix invoked without `conda activate` otherwise sees the current
 # Windows user's site-packages. Portable builds must be derived from .venv only.
 $env:PYTHONNOUSERSITE = "1"
+$env:PYTHONUTF8 = "1"
 
 function Assert-ChildPath([string]$Path) {
     $Resolved = [System.IO.Path]::GetFullPath($Path)
@@ -54,49 +58,68 @@ function Invoke-FrozenSmoke([string]$Description, [string]$Arguments, [int]$Time
 Write-Host "IVAS portable Windows build" -ForegroundColor White
 Write-Host "Repository: $RepoRoot"
 
-if (-not (Test-Path -LiteralPath $PythonExe -PathType Leaf)) {
+New-Item -ItemType Directory -Path (Join-Path $RepoRoot "tmp") -Force | Out-Null
+$BuildLog = Join-Path $RepoRoot "tmp\portable-build.log"
+Start-Transcript -Path $BuildLog -Force | Out-Null
+trap {
+    Write-Host "`n[FAILED] $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "Build log: $BuildLog"
+    Stop-Transcript | Out-Null
+    exit 1
+}
+
+if ($PythonExe) {
+    $PythonExe = (Resolve-Path -LiteralPath $PythonExe).Path
+} else {
+    foreach ($Candidate in @((Join-Path $VenvRoot "Scripts\python.exe"), (Join-Path $VenvRoot "python.exe"))) {
+        if (Test-Path -LiteralPath $Candidate -PathType Leaf) {
+            $PythonExe = $Candidate
+            break
+        }
+    }
+}
+if (-not $PythonExe) {
     $Conda = Get-Command conda -ErrorAction SilentlyContinue
     if ($null -eq $Conda) {
         throw "Conda is required once to clone the '$SourceEnvironment' environment into .venv."
     }
     if (Test-Path -LiteralPath $VenvRoot) {
-        throw "A partial .venv exists but has no python.exe. Remove that exact directory and run again."
+        throw "No Python found in .venv. Use -PythonExe to select an existing environment."
     }
     Invoke-Checked "Clone Conda environment '$SourceEnvironment' into .venv" {
         conda create --prefix $VenvRoot --clone $SourceEnvironment --copy --yes
     }
+    $PythonExe = Join-Path $VenvRoot "python.exe"
+}
+Write-Host "Python: $PythonExe"
+
+$RequirementFiles = @("requirements.txt", "requirements-portable.txt", "requirements-build.txt") |
+    ForEach-Object { Join-Path $RepoRoot $_ }
+if (-not $SkipCheckpoint -and -not (Test-Path -LiteralPath $Checkpoint -PathType Leaf)) {
+    throw "SAM 3.1 checkpoint not found: $Checkpoint. Use -SkipCheckpoint for a runtime-only build."
 }
 
-Invoke-Checked "Complete the isolated project runtime" {
-    $PreviousExtraIndex = $env:PIP_EXTRA_INDEX_URL
-    $env:PIP_EXTRA_INDEX_URL = "https://pypi.org/simple"
-    try {
-        & $PythonExe -m pip install --disable-pip-version-check --no-user -r (Join-Path $RepoRoot "requirements-portable.txt")
-    } finally {
-        if ($null -eq $PreviousExtraIndex) {
-            Remove-Item Env:PIP_EXTRA_INDEX_URL -ErrorAction SilentlyContinue
-        } else {
-            $env:PIP_EXTRA_INDEX_URL = $PreviousExtraIndex
+if (-not $SkipDependencyInstall) {
+    & $PythonExe (Join-Path $RepoRoot "tools\check_build_environment.py") @RequirementFiles
+    if ($LASTEXITCODE -ne 0) {
+        $InstallArgs = @("-m", "pip", "install", "--disable-pip-version-check", "--no-user")
+        foreach ($RequirementFile in $RequirementFiles) {
+            $InstallArgs += @("-r", $RequirementFile)
+        }
+        Invoke-Checked "Install missing runtime and build dependencies" {
+            & $PythonExe @InstallArgs
         }
     }
 }
 
-Invoke-Checked "Verify cloned runtime" {
-    & $PythonExe -c "import PyQt5, scipy, torch, torchvision; print('Python runtime OK'); print('torch=' + torch.__version__); print('cuda=' + str(torch.version.cuda))"
+Invoke-Checked "Verify build runtime" {
+    & $PythonExe -c "import PyInstaller, PyQt5, scipy, torch, torchvision; print('Python runtime OK'); print('PyInstaller=' + PyInstaller.__version__); print('torch=' + torch.__version__); print('cuda=' + str(torch.version.cuda))"
 }
 
-$HasPyInstaller = (& $PythonExe -c "import importlib.util; raise SystemExit(0 if importlib.util.find_spec('PyInstaller') else 1)")
-if ($LASTEXITCODE -ne 0) {
-    Invoke-Checked "Install the pinned build dependency" {
-        & $PythonExe -m pip install --disable-pip-version-check -r (Join-Path $RepoRoot "requirements-build.txt")
-    }
-}
-
+Assert-ChildPath $DestinationRoot
+Assert-ChildPath $StageRoot
 Assert-ChildPath $ReleaseRoot
 Assert-ChildPath $WorkRoot
-if (Test-Path -LiteralPath $ReleaseRoot) {
-    Remove-Item -LiteralPath $ReleaseRoot -Recurse -Force
-}
 if ($Clean -and (Test-Path -LiteralPath $WorkRoot)) {
     Remove-Item -LiteralPath $WorkRoot -Recurse -Force
 }
@@ -106,9 +129,6 @@ New-Item -ItemType Directory -Path (Split-Path $WorkRoot -Parent) -Force | Out-N
 if ($SkipCheckpoint) {
     $env:IVAS_BUNDLE_CHECKPOINT = ""
 } else {
-    if (-not (Test-Path -LiteralPath $Checkpoint -PathType Leaf)) {
-        throw "SAM 3.1 checkpoint not found: $Checkpoint. Use -SkipCheckpoint only for a runtime-only build."
-    }
     $env:IVAS_BUNDLE_CHECKPOINT = $Checkpoint
 }
 
@@ -116,7 +136,7 @@ Push-Location $RepoRoot
 try {
     $PyInstallerArgs = @(
         "--noconfirm",
-        "--distpath", $BuildRoot,
+        "--distpath", $StageRoot,
         "--workpath", $WorkRoot,
         "build_exe.spec"
     )
@@ -189,7 +209,31 @@ $BuildInfo = @(
 ) -join [Environment]::NewLine
 [System.IO.File]::WriteAllText((Join-Path $ReleaseRoot "BUILD_INFO.txt"), $BuildInfo, [System.Text.Encoding]::UTF8)
 
+# Only replace the release after a successful build and smoke tests. Preserve
+# the old folder, including any user configuration or annotations stored there.
+$PreviousRelease = $null
+if (Test-Path -LiteralPath $DestinationRoot) {
+    $PreviousRelease = Join-Path $BuildRoot ("IVAS.previous-" + [DateTime]::Now.ToString("yyyyMMdd-HHmmss-fff"))
+    Assert-ChildPath $PreviousRelease
+    Move-Item -LiteralPath $DestinationRoot -Destination $PreviousRelease
+}
+try {
+    Move-Item -LiteralPath $ReleaseRoot -Destination $DestinationRoot
+} catch {
+    if ($PreviousRelease -and -not (Test-Path -LiteralPath $DestinationRoot)) {
+        Move-Item -LiteralPath $PreviousRelease -Destination $DestinationRoot
+    }
+    throw
+}
+Remove-Item -LiteralPath $StageRoot
+$ExePath = Join-Path $DestinationRoot "IVAS.exe"
+
 Write-Host "`nBuild succeeded." -ForegroundColor Green
-Write-Host "Portable folder: $ReleaseRoot"
+Write-Host "Portable folder: $DestinationRoot"
 Write-Host "Executable:      $ExePath"
+if ($PreviousRelease) {
+    Write-Host "Previous build:  $PreviousRelease"
+}
+Write-Host "Build log:       $BuildLog"
 Write-Host "Distribute the entire IVAS folder; no Python or Conda installation is required."
+Stop-Transcript | Out-Null

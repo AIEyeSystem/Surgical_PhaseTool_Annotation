@@ -192,6 +192,19 @@ class BaseShape:
         self.points: list = []
         self.vertices: list = []
         self._vertex_cls = vertex_cls
+        self.origin_source = ""
+
+    def mark_edited(self, notify=True):
+        scene = self.scene()
+        if scene is None or getattr(self, "is_drawing", True) or not scene.mainwindow.load_finished:
+            return
+        if getattr(self, "source", "manual") != "manual":
+            self.origin_source = self.origin_source or self.source
+            self.source = "manual"
+        self.review_status = "draft"
+        self.area = self.calculate_area()
+        if notify:
+            scene.mainwindow.set_saved_state(False)
 
     # ---- point / vertex CRUD ------------------------------------------------
 
@@ -203,6 +216,9 @@ class BaseShape:
         self.scene().addItem(vertex)
         self.vertices.append(vertex)
         vertex.setPos(point)
+
+        if not getattr(self, "is_drawing", True):
+            self.mark_edited()
 
     def movePoint(self, index: int, point: QtCore.QPointF):
         """Move the *index*-th point to a new scene position.
@@ -232,6 +248,7 @@ class BaseShape:
         self.scene().removeItem(vertex)
         del vertex
         self.redraw()
+        self.mark_edited()
         return point
 
     def delete(self):
@@ -309,7 +326,7 @@ class Polygon(QtWidgets.QGraphicsPolygonItem, BaseShape):
             and not self.is_drawing
             and self.scene().mode != STATUSMode.REPAINT
         ):
-            self.scene().mainwindow.set_saved_state(False)
+            self.mark_edited()
 
     # ---- vertex-only move (used when the whole polygon is dragged) -----------
 
@@ -373,7 +390,7 @@ class Polygon(QtWidgets.QGraphicsPolygonItem, BaseShape):
                     self.moveVertex(index, point + bias)
 
                 if self.scene().mainwindow.load_finished:
-                    self.scene().mainwindow.set_saved_state(False)
+                    self.mark_edited()
 
         if (
             change == QtWidgets.QGraphicsItem.GraphicsItemChange.ItemSelectedHasChanged
@@ -499,6 +516,7 @@ class Polygon(QtWidgets.QGraphicsPolygonItem, BaseShape):
         self.track_id = getattr(obj, "track_id", "")
         self.source = getattr(obj, "source", "manual")
         self.review_status = getattr(obj, "review_status", "reviewed")
+        self.origin_source = getattr(obj, "origin_source", "")
 
     def to_object(self) -> Object:
         """Convert to an Annotation Object for serialisation."""
@@ -532,6 +550,7 @@ class Polygon(QtWidgets.QGraphicsPolygonItem, BaseShape):
             track_id=self.track_id,
             source=self.source,
             review_status=self.review_status,
+            origin_source=self.origin_source,
         )
         return object
 
@@ -814,7 +833,7 @@ class OBB(QtWidgets.QGraphicsPolygonItem, BaseShape):
             and not self.is_drawing
             and self.scene().mode != STATUSMode.REPAINT
         ):
-            self.scene().mainwindow.set_saved_state(False)
+            self.mark_edited()
 
     # ------------------------------------------------------------------
     #  Qt item events
@@ -866,7 +885,7 @@ class OBB(QtWidgets.QGraphicsPolygonItem, BaseShape):
                     self.moveVertex(index, point + bias)
 
                 if self.scene().mainwindow.load_finished:
-                    self.scene().mainwindow.set_saved_state(False)
+                    self.mark_edited()
 
         if (
             change == QtWidgets.QGraphicsItem.GraphicsItemChange.ItemSelectedHasChanged
@@ -994,6 +1013,7 @@ class OBB(QtWidgets.QGraphicsPolygonItem, BaseShape):
         self.track_id = getattr(obj, "track_id", "")
         self.source = getattr(obj, "source", "manual")
         self.review_status = getattr(obj, "review_status", "reviewed")
+        self.origin_source = getattr(obj, "origin_source", "")
 
     def to_object(self) -> Object:
         """Convert to an Annotation Object for serialisation."""
@@ -1030,6 +1050,7 @@ class OBB(QtWidgets.QGraphicsPolygonItem, BaseShape):
             track_id=self.track_id,
             source=self.source,
             review_status=self.review_status,
+            origin_source=self.origin_source,
         )
         return obj
 

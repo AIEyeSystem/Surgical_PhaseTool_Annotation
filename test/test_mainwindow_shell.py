@@ -5,7 +5,7 @@ from unittest import mock
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore, QtTest, QtWidgets
 
 
 class MainWindowShellTests(unittest.TestCase):
@@ -68,7 +68,7 @@ class MainWindowShellTests(unittest.TestCase):
         self.assertIsNone(window.video_annotation_workspace)
         self.assertLessEqual(
             len([action for action in window.toolBar.actions() if not action.isSeparator()]),
-            12,
+            15,
         )
         self.assertLessEqual(
             len([action for action in window.toolBar_2.actions() if not action.isSeparator()]),
@@ -230,6 +230,85 @@ class MainWindowShellTests(unittest.TestCase):
                         bar.setCurrentIndex(index)
                         self.app.processEvents()
                         self.assertTrue(bar.rect().intersects(bar.tabRect(index)))
+
+    def test_inspector_width_adapts_and_prevents_clipped_forms(self):
+        from IVAS.theme import apply_workbench_theme
+        old_style = self.app.styleSheet()
+        self.addCleanup(self.app.setStyleSheet, old_style)
+        apply_workbench_theme(self.app)
+        window = self._window()
+        window.show()
+        for dock in window._inspector_docks:
+            dock.show()
+        for language in ("zh", "en"):
+            window.translate(language)
+            widths = []
+            for width, height in ((800, 600), (1280, 720), (1920, 1080), (640, 480)):
+                window.resize(width, height)
+                QtTest.QTest.qWait(30)
+                self.assertEqual(window.width(), width)
+                for dock in window._inspector_docks:
+                    dock.raise_()
+                    QtTest.QTest.qWait(10)
+                    scroll = dock.widget()
+                    if width >= 1280:
+                        self.assertEqual(scroll.horizontalScrollBar().maximum(), 0,
+                                         (language, width, dock.objectName()))
+                    elif scroll.horizontalScrollBar().maximum():
+                        self.assertTrue(scroll.horizontalScrollBar().isVisible())
+                        scroll.horizontalScrollBar().setValue(scroll.horizontalScrollBar().maximum())
+                        self.assertLessEqual(scroll.widget().geometry().right(), scroll.viewport().width())
+                self.assertGreater(window.view.width(), width // 2)
+                widths.append(window.categories_dock.width())
+            self.assertGreater(widths[2], widths[0])
+            self.assertLess(widths[3], widths[0])
+        window.resize(1280, 720)
+        window.categories_dock.raise_()
+        QtTest.QTest.qWait(30)
+        manual_width = max(450, window.categories_dock.minimumWidth() + 50)
+        window.resizeDocks([window.categories_dock], [manual_width], QtCore.Qt.Horizontal)
+        QtTest.QTest.qWait(30)
+        self.assertAlmostEqual(window.categories_dock.width(), manual_width, delta=2)
+        window.resizeDocks([window.categories_dock], [100], QtCore.Qt.Horizontal)
+        QtTest.QTest.qWait(30)
+        self.assertGreaterEqual(window.categories_dock.width(), window.categories_dock.minimumWidth())
+
+    def test_large_inspector_fonts_keep_controls_reachable_and_floating_width(self):
+        from IVAS.theme import apply_workbench_theme
+        old_style = self.app.styleSheet()
+        self.addCleanup(self.app.setStyleSheet, old_style)
+        apply_workbench_theme(self.app)
+        window = self._window()
+        window.show()
+        window.translate("en")
+        window.setStyleSheet("QWidget { font-size: 16pt; }")
+        controls = (
+            (window.categories_dock, window.categories_dock_widget.pushButton_segment),
+            (window.categories_dock, window.categories_dock_widget.pushButton_segmiss),
+            (window.categories_dock, window.categories_dock_widget.pushButton_increase),
+            (window.visual_prompt_dock, window.visual_prompt_dock_widget.pushButton_predict),
+        )
+        for width in (1440, 640):
+            window.resize(width, 600)
+            for dock, control in controls:
+                dock.show()
+                dock.raise_()
+                QtTest.QTest.qWait(30)
+                scroll = dock.widget()
+                scroll.ensureWidgetVisible(control)
+                QtTest.QTest.qWait(10)
+                rect = QtCore.QRect(control.mapTo(scroll.viewport(), QtCore.QPoint()), control.size())
+                self.assertTrue(scroll.viewport().rect().contains(rect), (width, control.text(), rect))
+                self.assertGreaterEqual(control.width(), control.minimumSizeHint().width())
+            self.assertEqual(window.width(), width)
+        window.visual_prompt_dock.setFloating(True)
+        window.visual_prompt_dock.resize(480, 400)
+        QtTest.QTest.qWait(30)
+        floating_width = window.visual_prompt_dock.width()
+        window.resize(1280, 720)
+        QtTest.QTest.qWait(30)
+        self.assertEqual(window.visual_prompt_dock.width(), floating_width)
+        window.visual_prompt_dock.setFloating(False)
 
 
 if __name__ == "__main__":

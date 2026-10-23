@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+from contextlib import nullcontext
+
 import json
-import os
-import shutil
-import tempfile
+import copy
 from dataclasses import dataclass, field
 from pathlib import Path
 from threading import Event
@@ -17,6 +17,8 @@ import numpy as np
 from IVAS.annotation import Annotation, Object
 from IVAS.video.media import FrameTimestampMap, OperationCancelled, atomic_write_png
 from IVAS.video.project import UnifiedVideoProjectStore, utc_now
+from IVAS.utils.persistence import atomic_write_bytes, project_write_lock
+from IVAS.video.transactions import label_transaction, recover_label_transactions
 
 
 @dataclass
@@ -175,64 +177,65 @@ class SegAnyTrackingAdapter:
         cancel_event: Event,
         progress: Optional[Callable[[int, int], None]] = None,
     ) -> Iterable[Tuple[int, Mapping[str, np.ndarray]]]:
-        ordered_indices = sorted(frame_paths)
-        if ordered_indices != list(range(request.start_frame, request.end_frame + 1)):
-            raise ValueError("Model tracking requires a dense decoded frame range")
-        root = Path(frame_paths[ordered_indices[0]]).parent
-        names = [Path(frame_paths[index]).name for index in ordered_indices]
-        self.facade.init_state(str(root), names, async_loading_frames=True)
-        self.facade.reset_state()
-        model_ids: Dict[str, int] = {
-            object_id: index
-            for index, object_id in enumerate(
-                dict.fromkeys(seed.object_id for seed in request.seeds)
-            )
-        }
-        for seed in request.seeds:
-            mask = cv2.imread(str(seed.mask_path), cv2.IMREAD_GRAYSCALE)
-            if mask is None:
-                raise ValueError("Unable to read seed mask: {}".format(seed.mask_path))
-            self.facade.add_new_mask(
-                seed.frame_index - request.start_frame,
-                model_ids[seed.object_id],
-                mask > 0,
-            )
+        with getattr(self.facade, "inference_lock", nullcontext()):
+            ordered_indices = sorted(frame_paths)
+            if ordered_indices != list(range(request.start_frame, request.end_frame + 1)):
+                raise ValueError("Model tracking requires a dense decoded frame range")
+            root = Path(frame_paths[ordered_indices[0]]).parent
+            names = [Path(frame_paths[index]).name for index in ordered_indices]
+            self.facade.init_state(str(root), names, async_loading_frames=True)
+            self.facade.reset_state()
+            model_ids: Dict[str, int] = {
+                object_id: index
+                for index, object_id in enumerate(
+                    dict.fromkeys(seed.object_id for seed in request.seeds)
+                )
+            }
+            for seed in request.seeds:
+                mask = cv2.imread(str(seed.mask_path), cv2.IMREAD_GRAYSCALE)
+                if mask is None:
+                    raise ValueError("Unable to read seed mask: {}".format(seed.mask_path))
+                self.facade.add_new_mask(
+                    seed.frame_index - request.start_frame,
+                    model_ids[seed.object_id],
+                    mask > 0,
+                )
 
-        directions = [False]
-        if request.direction == "backward":
-            directions = [True]
-        elif request.direction == "bidirectional":
-            directions = [True, False]
-        emitted = set()
-        expected = request.end_frame - request.start_frame + 1
-        completed = 0
-        for reverse in directions:
-            for relative_index, masks in self._propagate_direction(
-                TrackingRequest(
-                    direction=request.direction,
-                    start_frame=0,
-                    end_frame=request.end_frame - request.start_frame,
-                    seeds=[
-                        TrackingSeed(
-                            frame_index=seed.frame_index - request.start_frame,
-                            object_id=seed.object_id,
-                            mask_path=seed.mask_path,
-                        )
-                        for seed in request.seeds
-                    ],
-                    engine=request.engine,
-                ),
-                reverse,
-                cancel_event,
-            ):
-                absolute_index = relative_index + request.start_frame
-                if absolute_index in emitted:
-                    continue
-                emitted.add(absolute_index)
-                completed += 1
-                if progress is not None:
-                    progress(completed, expected)
-                yield absolute_index, masks
+            directions = [False]
+            if request.direction == "backward":
+                directions = [True]
+            elif request.direction == "bidirectional":
+                directions = [True, False]
+            emitted = set()
+            expected = request.end_frame - request.start_frame + 1
+            completed = 0
+            for reverse in directions:
+                for relative_index, masks in self._propagate_direction(
+                    TrackingRequest(
+                        direction=request.direction,
+                        start_frame=0,
+                        end_frame=request.end_frame - request.start_frame,
+                        seeds=[
+                            TrackingSeed(
+                                frame_index=seed.frame_index - request.start_frame,
+                                object_id=seed.object_id,
+                                mask_path=seed.mask_path,
+                            )
+                            for seed in request.seeds
+                        ],
+                        engine=request.engine,
+                    ),
+                    reverse,
+                    cancel_event,
+                ):
+                    absolute_index = relative_index + request.start_frame
+                    if absolute_index in emitted:
+                        continue
+                    emitted.add(absolute_index)
+                    completed += 1
+                    if progress is not None:
+                        progress(completed, expected)
+                    yield absolute_index, masks
 
 
 def _stored_path(store: UnifiedVideoProjectStore, path: Path) -> str:
@@ -253,6 +256,8 @@ def _resolve_path(store: UnifiedVideoProjectStore, value: str) -> Path:
 class VideoTrackingService:
     def __init__(self, store: UnifiedVideoProjectStore) -> None:
         self.store = store
+        if store.path.is_file():
+            recover_label_transactions(store)
 
     def stage(
         self,
@@ -392,6 +397,11 @@ class VideoTrackingService:
         label_path_for_frame: Callable[[int], Path],
         replace_manual: bool = False,
     ) -> Dict[str, Any]:
+        with project_write_lock(self.store.path):
+            self.store.refresh()
+            return self._commit(run_id, image_path_for_frame, label_path_for_frame, replace_manual)
+
+    def _commit(self, run_id, image_path_for_frame, label_path_for_frame, replace_manual):
         run = self._run(run_id)
         if run.get("status") != "staged":
             raise ValueError("Only staged tracking runs can be committed")
@@ -399,8 +409,8 @@ class VideoTrackingService:
         backup_directory = self.store.tracking_directory / run_id / "accepted_backup"
         backup_directory.mkdir(parents=True, exist_ok=True)
         backup_manifest: List[Dict[str, Any]] = []
-        modified: List[Path] = []
-        store_snapshot = self.store._runtime_snapshot()
+        label_paths = {int(frame["frame_index"]): Path(label_path_for_frame(int(frame["frame_index"]))).resolve()
+                       for frame in run.get("staged_frames", [])}
         frame_map = None
         frame_map_info = self.store.project.get("frame_map", {})
         if frame_map_info.get("asset_path"):
@@ -410,22 +420,24 @@ class VideoTrackingService:
                 )
             except Exception:
                 frame_map = None
-        try:
+        with label_transaction(self.store, run_id, "committed", label_paths.values()):
             for frame_entry in run.get("staged_frames", []):
                 frame_index = int(frame_entry["frame_index"])
                 image_path = Path(image_path_for_frame(frame_index)).resolve()
-                label_path = Path(label_path_for_frame(frame_index)).resolve()
+                label_path = label_paths[frame_index]
                 annotation = Annotation(str(image_path), str(label_path)).load_annotation()
                 backup_path = backup_directory / "frame_{:012d}.json".format(frame_index)
                 existed = label_path.is_file()
                 if existed:
-                    shutil.copy2(label_path, backup_path)
+                    atomic_write_bytes(backup_path, label_path.read_bytes())
                 backup_manifest.append(
                     {
                         "frame_index": frame_index,
                         "label_path": _stored_path(self.store, label_path),
                         "backup_path": _stored_path(self.store, backup_path) if existed else "",
                         "existed": existed,
+                        "spatial_before": copy.deepcopy(next((frame for frame in self.store.project["spatial_frames"]
+                                                              if frame["frame_index"] == frame_index), None)),
                     }
                 )
                 incoming_track_ids = {
@@ -436,14 +448,15 @@ class VideoTrackingService:
                 manual_conflicts = {
                     obj.track_id
                     for obj in annotation.objects
-                    if obj.track_id in incoming_track_ids and obj.source != "tracking"
+                    if obj.track_id in incoming_track_ids
+                    and (obj.source != "tracking" or obj.review_status == "reviewed")
                 }
                 annotation.objects = [
                     obj
                     for obj in annotation.objects
                     if not (
                         obj.track_id in incoming_track_ids
-                        and (obj.source == "tracking" or replace_manual)
+                        and (replace_manual or obj.track_id not in manual_conflicts)
                     )
                 ]
                 next_group = max([int(obj.group) for obj in annotation.objects] + [0]) + 1
@@ -464,7 +477,6 @@ class VideoTrackingService:
                     )
                     next_group += 1
                 annotation.save_annotation()
-                modified.append(label_path)
                 fps = float(self.store.media.get("fps", 0.0) or 0.0)
                 pts_ms = (
                     frame_map.timestamp_for_frame(frame_index)
@@ -480,32 +492,20 @@ class VideoTrackingService:
                 )
 
             manifest_path = backup_directory / "backup_manifest.json"
-            manifest_path.write_text(
-                json.dumps(backup_manifest, ensure_ascii=False, indent=2),
-                encoding="utf-8",
-            )
+            atomic_write_bytes(manifest_path, json.dumps(backup_manifest, ensure_ascii=False, indent=2).encode("utf-8"))
             with self.store.transaction():
                 updated = self.store.update_tracking_run(
                     run_id, status="committed", committed_at=utc_now()
                 )
                 self.store.save()
             return updated
-        except Exception:
-            self.store._restore_runtime_snapshot(store_snapshot)
-            for entry in reversed(backup_manifest):
-                label_path = _resolve_path(self.store, entry["label_path"])
-                backup_path = (
-                    _resolve_path(self.store, entry["backup_path"])
-                    if entry.get("backup_path")
-                    else None
-                )
-                if entry.get("existed") and backup_path is not None and backup_path.is_file():
-                    shutil.copy2(backup_path, label_path)
-                elif not entry.get("existed") and label_path.is_file():
-                    label_path.unlink()
-            raise
 
     def rollback(self, run_id: str) -> Dict[str, Any]:
+        with project_write_lock(self.store.path):
+            self.store.refresh()
+            return self._rollback(run_id)
+
+    def _rollback(self, run_id):
         run = self._run(run_id)
         if run.get("status") != "committed":
             raise ValueError("Only committed tracking runs can be rolled back")
@@ -518,16 +518,35 @@ class VideoTrackingService:
         if not manifest_path.is_file():
             raise ValueError("Tracking rollback manifest is missing")
         entries = json.loads(manifest_path.read_text(encoding="utf-8"))
+        contents = []
         for entry in entries:
             label_path = _resolve_path(self.store, entry["label_path"])
             if entry.get("existed"):
                 backup_path = _resolve_path(self.store, entry["backup_path"])
                 if not backup_path.is_file():
                     raise ValueError("Tracking rollback backup is missing")
-                shutil.copy2(backup_path, label_path)
-            elif label_path.is_file():
-                label_path.unlink()
-        with self.store.transaction():
+                contents.append((label_path, backup_path.read_bytes()))
+            else:
+                contents.append((label_path, None))
+        with label_transaction(self.store, run_id, "rolled_back", [path for path, _ in contents]):
+            for path, data in contents:
+                if data is None:
+                    path.unlink(missing_ok=True)
+                else:
+                    atomic_write_bytes(path, data)
+            for entry in entries:
+                index = int(entry["frame_index"])
+                if "spatial_before" in entry:
+                    self.store.project["spatial_frames"] = [frame for frame in self.store.project["spatial_frames"]
+                                                            if frame["frame_index"] != index]
+                    if entry["spatial_before"] is not None:
+                        self.store.project["spatial_frames"].append(copy.deepcopy(entry["spatial_before"]))
+                else:
+                    # Legacy manifests did not record the previous link. Keep
+                    # the image link, but report whether its restored label exists.
+                    for frame in self.store.project["spatial_frames"]:
+                        if frame["frame_index"] == index:
+                            frame["annotation_status"] = "saved" if entry["existed"] else "pending"
             updated = self.store.update_tracking_run(
                 run_id, status="rolled_back", rolled_back_at=utc_now()
             )

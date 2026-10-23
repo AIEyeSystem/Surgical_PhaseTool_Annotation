@@ -86,8 +86,11 @@ widget supports them.
 
 The active media is always the focal region. Mode is the first toolbar dropdown,
 before Project, and displays Video or Frame from the actual central surface.
-File owns open/save/import/export; Project owns directory settings and media
-relinking. The central surface shows either the image canvas or
+File groups Image, Video and General commands under visible headings separated
+by dashed rules. Image contains image and frame-label directories; Video contains
+media/project opening, output directory, relinking and video annotation exchange.
+General contains the shared Save, Settings and Exit commands. Project retains
+shortcuts to the same directory and relinking actions. The central surface shows either the image canvas or
 video preview for the active case, while shared temporal controls, case panels,
 transport, and the Phase/Task timeline stay in the main-window shell. Opening an
 indexed video frame must retain that case context rather than creating a second
@@ -98,11 +101,21 @@ frame, canvas shortcuts remain frame operations; video shortcuts apply when the
 video panels or transport have focus. Video undo restores only annotations and
 templates, preserving media, frame links and tracking state.
 Toolbars provide the frequent path and labelled dropdown menus
-provide the complete path. At the verified compact 640×480 size, secondary
+provide the complete path. Polygon, SAM point, SAM box and Repaint are direct
+toolbar actions. They show icons and short labels at widths of 1100 logical
+pixels or more, and icons with tooltips below that width. Frame/video handoff
+buttons appear beside Mode and Project so drawing tools do not displace them.
+At the verified compact 640×480 size, secondary
 controls remain reachable through toolbar overflow and dock scrolling.
-Right-hand inspector docks default to 360 logical pixels. Their tabs use normal
-body text, a padded target and a selected underline. Labels never elide or shrink
-to fit; overflow uses visible scroll arrows, including after language/layout changes.
+Right-hand inspector widths follow window space and the minimum size of their
+styled, translated forms, reserving space for a vertical scrollbar. Larger
+windows give inspectors more room; small windows retain scrolling and at least
+half the window for the media area in the default layout. Splitter adjustments
+persist until window space or content requirements change; floating/left-side
+panels retain independent sizing. Text buttons use their natural size hints.
+Tabs use normal body text, a padded target and a selected underline. Labels
+never elide or shrink to fit; overflow uses visible scroll arrows, including
+after language/layout changes.
 
 Tool dialogs use `ResponsiveDialog` to bound their decorated window to the
 current screen and expose overflow through a scroll area. Simple action footers
@@ -124,7 +137,9 @@ play button becomes Return to video, keeping the exit visible even on small
 windows. Returning preserves pending intervals and seeks to the edited frame;
 playback resumes only on the next Play command. Point/box inference runs outside
 the UI thread, retaining at most one pending prompt set. Finish waits for the
-latest result; Cancel invalidates it immediately. Same-frame reuse requires
+latest result and saves completed annotations immediately, independently of the
+global auto-save setting. A failed save retains the shapes and unsaved state.
+Cancel invalidates the pending result immediately. Same-frame reuse requires
 unchanged image and label file signatures.
 
 ## Elevation & Depth

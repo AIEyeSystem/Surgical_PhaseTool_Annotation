@@ -3,6 +3,7 @@
 
 import os
 import tempfile
+import math
 from json import dump, load
 from typing import List, Union
 
@@ -43,6 +44,7 @@ class Object:
         track_id: str = "",
         source: str = "manual",
         review_status: str = "reviewed",
+        origin_source: str = "",
     ):
         self.category = category
         self.group = group
@@ -57,6 +59,39 @@ class Object:
         self.track_id = str(track_id or "")
         self.source = str(source or "manual")
         self.review_status = str(review_status or "reviewed")
+        self.origin_source = str(origin_source or "")
+
+    @classmethod
+    def from_dict(cls, value):
+        if not isinstance(value, dict):
+            raise ValueError("Annotation object must be a JSON object")
+        points = value.get("segmentation", [])
+        if not isinstance(points, (list, tuple)) or len(points) < 3:
+            raise ValueError("Annotation polygon requires at least three vertices")
+        if any(not isinstance(point, (list, tuple)) or len(point) != 2
+               or any(not isinstance(number, (int, float)) or not math.isfinite(number)
+                      for number in point) for point in points):
+            raise ValueError("Annotation vertices must contain finite x/y coordinates")
+        def boolean(item):
+            return item.strip().lower() in ("1", "true", "yes", "on") if isinstance(item, str) else bool(item)
+        layer = value.get("layer", 2)
+        if not isinstance(layer, (int, float)) or not math.isfinite(layer):
+            raise ValueError("Annotation layer must be finite")
+        return cls(str(value.get("category", "unknown")), int(value.get("group") or 0), points,
+                   value.get("area") or 0, layer, value.get("bbox", []),
+                   boolean(value.get("iscrowd", False)), str(value.get("note") or ""),
+                   boolean(value.get("is_obb", False)), value.get("object_id", ""),
+                   value.get("track_id", ""), value.get("source", "manual"),
+                   value.get("review_status", "reviewed"), value.get("origin_source", ""))
+
+    def to_dict(self):
+        result = {name: getattr(self, name) for name in (
+            "category", "group", "segmentation", "area", "layer", "bbox", "iscrowd", "note", "is_obb",
+            "source", "review_status")}
+        for name in ("object_id", "track_id", "origin_source"):
+            if getattr(self, name, ""):
+                result[name] = getattr(self, name)
+        return result
 
 
 class Annotation:
@@ -84,6 +119,7 @@ class Annotation:
         self.img_name = img_name
         self.label_path = label_path
         self.note = ""
+        self._load_failed = False
 
         if image_path.lower().endswith(".dcm"):
             from IVAS.utils.dicom import load_dcm_as_image
@@ -111,77 +147,45 @@ class Annotation:
         r"""
         Load annotation from self.label_path
         """
-        self.objects.clear()
+        self._load_failed = True
+        parsed_objects = []
+        info = {}
         if os.path.exists(self.label_path):
             with open(self.label_path, "r", encoding="utf-8") as f:
                 dataset = load(f)
-                info = dataset.get("info", {})
+                if not isinstance(dataset, dict) or not isinstance(dataset.get("info"), dict):
+                    raise ValueError("Annotation must contain an info object")
+                info = dataset["info"]
                 description = info.get("description", "")
                 if description in SUPPORTED_ANNOTATION_FORMATS:
-                    # IVAS JSON (previous IVAT descriptions remain readable)
+                    # Original ISAT and previous IVAT files share this schema.
                     objects = dataset.get("objects", [])
-                    self.img_name = info.get("name", "")
-                    width = info.get("width", None)
-                    if width is not None:
-                        self.width = width
-                    height = info.get("height", None)
-                    if height is not None:
-                        self.height = height
-                    depth = info.get("depth", None)
-                    if depth is not None:
-                        self.depth = depth
-                    self.note = info.get("note", "")
+                    if not isinstance(objects, list):
+                        raise ValueError("Annotation objects must be a list")
                     for obj in objects:
-                        category = obj.get("category", "unknow")
-                        group = obj.get("group", 0)
-                        if group is None:
-                            group = 0
-                        segmentation = obj.get("segmentation", [])
-                        iscrowd = obj.get("iscrowd", False)
-                        if isinstance(iscrowd, str):
-                            iscrowd = iscrowd.strip().lower() in (
-                                "1", "true", "yes", "on"
-                            )
-                        else:
-                            iscrowd = bool(iscrowd)
-                        note = obj.get("note", "")
-                        area = obj.get("area", 0)
-                        layer = obj.get("layer", 2)
-                        bbox = obj.get("bbox", [])
-                        is_obb = obj.get("is_obb", False)
-                        object_id = obj.get("object_id", "")
-                        track_id = obj.get("track_id", "")
-                        source = obj.get("source", "manual")
-                        review_status = obj.get("review_status", "reviewed")
-                        obj = Object(
-                            category,
-                            group,
-                            segmentation,
-                            area,
-                            layer,
-                            bbox,
-                            iscrowd,
-                            note,
-                            is_obb,
-                            object_id,
-                            track_id,
-                            source,
-                            review_status,
-                        )
-                        self.objects.append(obj)
+                        parsed_objects.append(Object.from_dict(obj))
                 else:
-                    # 不再支持直接打开labelme标注文件（在菜单栏-tool-convert中提供了IVAS<->LabelMe相互转换工具）
-                    print(
-                        "Warning: The file {} is not an IVAS annotation JSON.".format(
-                            self.label_path
-                        )
-                    )
+                    raise ValueError("The file {} is not an IVAS annotation JSON".format(self.label_path))
+        for name in ("width", "height", "depth"):
+            if info.get(name) is None:
+                info[name] = getattr(self, name)
+            value = info[name]
+            if not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
+                raise ValueError("Invalid annotation image {}".format(name))
+        self.objects = parsed_objects
+        self.img_name = info.get("name", self.img_name)
+        for name in ("width", "height", "depth"):
+            setattr(self, name, info.get(name, getattr(self, name)))
+        self.note = str(info.get("note") or "")
+        self._load_failed = False
         return self
 
     def save_annotation(self):
         r"""
         Save annotation to self.label_path
         """
+        if self._load_failed:
+            raise ValueError("Cannot overwrite an annotation that failed to load")
         dataset = {}
         dataset["info"] = {}
         dataset["info"]["description"] = self.description
@@ -193,23 +197,7 @@ class Annotation:
         dataset["info"]["note"] = self.note
         dataset["objects"] = []
         for obj in self.objects:
-            object = {}
-            object["category"] = obj.category
-            object["group"] = obj.group
-            object["segmentation"] = obj.segmentation
-            object["area"] = obj.area
-            object["layer"] = obj.layer
-            object["bbox"] = obj.bbox
-            object["iscrowd"] = obj.iscrowd
-            object["note"] = obj.note
-            object["is_obb"] = obj.is_obb
-            if obj.object_id:
-                object["object_id"] = obj.object_id
-            if obj.track_id:
-                object["track_id"] = obj.track_id
-            object["source"] = obj.source
-            object["review_status"] = obj.review_status
-            dataset["objects"].append(object)
+            dataset["objects"].append(obj.to_dict())
         label_dir = os.path.dirname(os.path.abspath(self.label_path))
         os.makedirs(label_dir, exist_ok=True)
         handle, temporary_path = tempfile.mkstemp(

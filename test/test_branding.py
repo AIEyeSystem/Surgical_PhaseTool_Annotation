@@ -12,6 +12,8 @@ from PyQt5 import QtGui, QtWidgets
 import IVAS
 from IVAS import icons_rc  # noqa: F401 - registers the compiled Qt resources
 from IVAS.annotation import Annotation, Object
+from IVAS.configs import load_config
+from IVAS.formats.ivas import IVAS as IVASFormat
 from IVAS.branding import (
     ANNOTATION_FORMAT,
     APP_NAME,
@@ -97,12 +99,71 @@ class BrandingTests(unittest.TestCase):
             payload = json.loads(label_path.read_text(encoding="utf-8"))
             self.assertEqual(payload["info"]["description"], ANNOTATION_FORMAT)
 
-            for legacy_format in ("IVAT",):
+            for legacy_format in ("ISAT", "IVAT"):
                 payload["info"]["description"] = legacy_format
                 label_path.write_text(json.dumps(payload), encoding="utf-8")
                 loaded = Annotation(str(image_path), str(label_path)).load_annotation()
                 self.assertEqual(len(loaded.objects), 1)
                 self.assertEqual(loaded.objects[0].category, "lens")
+
+    def test_original_isat_roundtrip_in_gui_and_converter_preserves_annotations(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            image_path = root / "image.png"
+            label_path = root / "image.json"
+            Image.new("RGB", (8, 6), "white").save(image_path)
+            obj = {"category": "晶状体套圈", "group": 2, "segmentation": [[1.25, 1], [5, 1], [5, 5]],
+                   "area": 7.5, "layer": 3, "bbox": [1.25, 1, 5, 5], "iscrowd": False, "note": "原标注"}
+            label_path.write_text(json.dumps({"info": {"description": "ISAT", "name": "image.png",
+                                                       "width": 8, "height": 6, "depth": 3, "note": "原图"},
+                                             "objects": [obj]}, ensure_ascii=False), encoding="utf-8")
+            original = label_path.read_bytes()
+            annotation = Annotation(str(image_path), str(label_path)).load_annotation()
+            converter = IVASFormat()
+            converted = converter.load_one_ivas_json(str(label_path))
+            self.assertEqual(label_path.read_bytes(), original)
+            for loaded in (annotation.objects[0], converted.objs[0]):
+                for key, value in obj.items():
+                    self.assertEqual(getattr(loaded, key), value)
+            annotation.label_path = str(root / "gui-output.json")
+            annotation.save_annotation()
+            converter.save_one_ivas_json(converted, str(root / "converter-output.json"))
+            for filename in ("gui-output.json", "converter-output.json"):
+                saved = json.loads((root / filename).read_text(encoding="utf-8"))
+                self.assertEqual(saved["info"]["description"], "IVAS")
+                self.assertEqual(saved["info"]["note"], "原图")
+                for key, value in obj.items():
+                    self.assertEqual(saved["objects"][0][key], value)
+
+    def test_original_isat_category_config_is_discovered_with_ivas_priority(self):
+        from IVAS.widgets.mainwindow import _find_category_config
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            legacy = root / "isat.yaml"
+            current = root / "ivas.yaml"
+            legacy.write_text("label:\n- name: 晶状体套圈\n", encoding="utf-8")
+            self.assertEqual(_find_category_config(directory), str(legacy))
+            self.assertEqual(load_config(str(current))["label"][0]["name"], "晶状体套圈")
+            current.write_text("label:\n- name: Vectis\n", encoding="utf-8")
+            self.assertEqual(_find_category_config(directory), str(current))
+            self.assertEqual(load_config(str(current))["label"][0]["name"], "Vectis")
+
+    def test_foreign_annotation_format_still_cannot_be_loaded_or_overwritten(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            image_path, label_path = root / "image.png", root / "image.json"
+            Image.new("RGB", (8, 6)).save(image_path)
+            label_path.write_text('{"info": {"description": "unrelated"}, "objects": []}', encoding="utf-8")
+            original = label_path.read_bytes()
+            annotation = Annotation(str(image_path), str(label_path))
+            with self.assertRaises(ValueError):
+                annotation.load_annotation()
+            with self.assertRaises(ValueError):
+                annotation.save_annotation()
+            with self.assertRaises(AttributeError):
+                IVASFormat().load_one_ivas_json(str(label_path))
+            self.assertEqual(label_path.read_bytes(), original)
 
     def test_new_video_project_name_and_legacy_project_discovery(self):
         with tempfile.TemporaryDirectory() as directory:

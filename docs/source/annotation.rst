@@ -4,10 +4,26 @@ Annotate
 1. Start Annotation
 ---------------------------------
 
+The ``File`` menu separates ``Image``, ``Video`` and ``General`` commands with
+dashed dividers. Image contains the image and frame-label directories. Video
+contains opening media/projects, the output directory, relinking and video
+annotation import/export. Save current work, Settings and Exit are shared.
+
+In Frame mode, ``Polygon``, ``SAM point``, ``SAM box`` and ``Repaint`` are direct
+toolbar buttons. Wide windows show their icons and names; narrow windows keep
+the icons and hover descriptions. SAM tools become available when the model and
+current image encoding are ready.
+
+The right-hand inspectors adapt their width to the window, display scaling and
+translated controls. Very small windows or large fonts retain scrollbars so all
+controls remain reachable. Drag the divider to adjust the width manually; it
+adapts again when window space or content requirements change. Floating panels
+keep their own size. Use ``View → Reset layout`` to restore the default layout.
+
 1.1 Manual Annotation
 ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 
-Click the ``Draw Polygon`` button ``[C]`` in the toolbar to start manually annotating a polygon.
+Click the ``Polygon`` button ``[C]`` in the toolbar to start manually annotating a polygon.
 
 .. image:: ../../display/draw_polygon_button.png
     :alt: draw_polygon_button.png
@@ -54,7 +70,7 @@ Utilizes SAM with point and bounding box prompts.
 1.2.1 Point Prompt
 .................................
 
-Click the ``Segment anything point`` button ``[Q]`` in the toolbar to start SAM point prompt.
+Click the ``SAM point`` button ``[Q]`` in the toolbar to start SAM point prompt.
 
 .. image:: ../../display/point_prompts.gif
     :alt: point_prompts.gif
@@ -62,7 +78,7 @@ Click the ``Segment anything point`` button ``[Q]`` in the toolbar to start SAM 
 1.2.2 Box Prompt
 .................................
 
-Click the ``Segment anything box`` button ``[W]`` in the toolbar to start SAM box prompt.
+Click the ``SAM box`` button ``[W]`` in the toolbar to start SAM box prompt.
 
 .. image:: ../../display/box_prompts.gif
     :alt: box_prompts.gif
@@ -78,7 +94,7 @@ embedding for one or more prompts.
 2. Keep the category name as the prompt, or edit it to an English alias that is
    easier for the model to ground.
 
-3. Click ``Segment selected`` to explicitly confirm prediction. Changing a
+3. Click ``Segment`` to explicitly confirm prediction. Changing a
    category does not automatically run the model.
 
 4. Review the created polygons. An empty model result creates no annotation.
@@ -94,6 +110,29 @@ shares the SAM 3.1 image embedding.
           intentionally separate. The category is saved in the annotation;
           the prompt only guides segmentation.
 
+Folder segmentation
+~~~~~~~~~~~~~~~~~~~
+
+In Frame mode with SAM3 or SAM3.1 loaded, select a foreground category in
+``Categories``. The row below ``Segment / Change`` offers:
+
+* ``SegAll``: segment all images in the currently opened folder using the
+  selected category name as the prompt.
+* ``SegMiss``: segment only images whose annotation JSON contains no object of
+  that category. Missing JSON files, empty annotations and annotations of other
+  categories are eligible. Display aliases do not affect this check.
+
+Unsaved edits on the current image are saved before the batch. New polygons are
+appended to the existing JSON files in the current label directory as SAM drafts;
+existing objects are preserved. Repeating ``SegAll`` appends another set of
+predictions. Use ``SegMiss`` to fill missing categories without repeating images
+that already have them. Empty predictions remain eligible for a later run.
+
+The progress window supports cancellation and reports errors per image. Completed
+images stay saved; cancelled in-flight predictions are discarded. The batch uses
+the current file list without recursing into subfolders. For video projects this
+means already extracted frames, whose saved annotation links are also updated.
+
 1.2.4 Visual Prompt
 .................................
 
@@ -106,9 +145,17 @@ Use the positive box and negative box for prediction.
 2. Finish Annotation
 ---------------------------------
 
-Click the ``Finish annotation`` button ``[E]`` in the toolbar to end the annotation.
+Click the ``Finish annotation`` checkmark ``[E]`` in the toolbar to finish the
+annotation and immediately save the current image's JSON, even when the global
+auto-save option is disabled. This also updates the saved frame link when
+annotating a video frame.
 
 When using sam ``point prompt`` or ``box prompt``, ``finish annotation`` will convert the mask into a polygon on the canvas.
+
+If SAM inference is still running, Finish waits for the latest result before
+saving. Cancelled or invalid shapes do not trigger a save. If saving fails, the
+completed shape remains on the canvas and the image stays marked as unsaved;
+resolve the error and retry with ``Ctrl+S``.
 
 .. tip:: IVAS offers multiple conversion methods, which you can find in the settings interface.
 

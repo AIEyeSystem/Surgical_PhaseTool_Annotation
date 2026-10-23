@@ -1,51 +1,121 @@
- label:
-  - color: '#000000'
-    name: 背景
-  - color: '#ef2929'
-    name: 辅助钩
-  - color: '#fcaf3e'
-    name: 生物标记器
-  - color: '#fce94f'
-    name: 套管
-  - color: '#8ae234'
-    name: 撕囊针
-  - color: '#729fcf'
-    name: 撕囊镊
-  - color: '#ad7fa8'
-    name: 电凝器
-  - color: '#e9b96e'
-    name: 结膜剪
-  - color: '#a40000'
-    name: 角膜
-  - color: '#5c3566'
-    name: 新月形刀
-  - color: '#204a87'
-    name: 镊子
-  - color: '#00bcd4'
-    name: 灌注抽吸手柄
-  - color: '#ff69b4'
-    name: 人工晶状体植入器
-  - color: '#ff7f50'
-    name: 主切口刀
-  - color: '#008080'
-    name: 标记器
-  - color: '#b8860b'
-    name: 门德斯角度标记环
-  - color: '#7b68ee'
-    name: 持针器
-  - color: '#00ff7f'
-    name: 超声乳化手柄
-  - color: '#dc143c'
-    name: 侧切口刀
-  - color: '#4682b4'
-    name: 调位铲
-  - color: '#ff00ff'
-    name: 缝合针
-  - color: '#a0522d'
-    name: Vannas显微剪
-  - color: '#9acd32'
-    name: 晶状体匙
-  - color: '#ff1493'
-    name: 玻璃体切割手柄
-  - color: '#c0c0c0'
-    name: 冲洗器
+label:
+- color: '#000000'
+  id: 0
+  name: __background__
+- color: '#a0a0a0'
+  id: 1
+  name: 5ml注射器
+- color: '#33d1c1'
+  id: 2
+  name: IA头
+- color: '#f579d4'
+  id: 3
+  name: IOL推注器
+- color: '#eb4257'
+  id: 4
+  name: Mendez散光轴位标记环
+- color: '#8acfcf'
+  id: 5
+  name: infusion cannula
+- color: '#c7522a'
+  id: 6
+  name: phaco头
+- color: '#996633'
+  id: 7
+  name: trocar
+- color: '#ff00ff'
+  id: 8
+  name: 丝裂霉素棉片
+- color: '#e9b96e'
+  id: 9
+  name: 主切口刀
+- color: '#7734a9'
+  id: 10
+  name: 人工晶状体
+- color: '#a40000'
+  id: 11
+  name: 侧切口刀
+- color: '#8f5902'
+  id: 12
+  name: 冲洗针头
+- color: '#4e9a06'
+  id: 13
+  name: 剪刀
+- color: '#ffaaff'
+  id: 14
+  name: 双腔管
+- color: '#808080'
+  id: 15
+  name: 巩膜塞
+- color: '#00007f'
+  id: 16
+  name: 巩膜瓣刀
+- color: '#aabbcc'
+  id: 17
+  name: 截囊针
+- color: '#669900'
+  id: 18
+  name: 房角分离钩
+- color: '#006699'
+  id: 19
+  name: 房角镜
+- color: '#42ebb9'
+  id: 20
+  name: 抹刀
+- color: '#9933cc'
+  id: 21
+  name: 持针器
+- color: '#204a87'
+  id: 22
+  name: 撕囊镊
+- color: '#55ffff'
+  id: 23
+  name: 晶状体套圈
+- color: '#eb427a'
+  id: 24
+  name: 月形隧道刀
+- color: '#5c3566'
+  id: 25
+  name: 有齿镊
+- color: '#baeb42'
+  id: 26
+  name: 标记笔
+- color: '#55aa00'
+  id: 27
+  name: 棉签
+- color: '#009999'
+  id: 28
+  name: 灌注管
+- color: '#c742eb'
+  id: 29
+  name: 玻切头
+- color: '#550000'
+  id: 30
+  name: 生理盐水冲洗针管
+- color: '#ffffff'
+  id: 31
+  name: 电凝器
+- color: '#55ffff'
+  id: 32
+  name: 矛形刀
+- color: '#cc6600'
+  id: 33
+  name: 穿刺刀
+- color: '#8f42eb'
+  id: 34
+  name: 缝合针
+- color: '#4289eb'
+  id: 35
+  name: 角膜标记器
+- color: '#747474'
+  id: 36
+  name: 角膜环钻
+- color: '#ef2929'
+  id: 37
+  name: 角膜缘
+- color: '#aaaa00'
+  id: 38
+  name: 辅助钩
+- color: '#ffaaff'
+  id: 39
+  name: 隧道刀

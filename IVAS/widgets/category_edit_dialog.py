@@ -161,6 +161,7 @@ class CategoryEditDialog(ResponsiveDialog, Ui_Dialog):
                 note,
                 QtGui.QColor(self.mainwindow.category_color_dict.get(category, "#6F737A")),
             )
+            polygon.mark_edited()
             self.mainwindow.annos_dock_widget.update_listwidget()
 
         self.polygons = []

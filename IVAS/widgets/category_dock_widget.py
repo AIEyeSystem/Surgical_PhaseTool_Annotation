@@ -5,6 +5,7 @@ import functools
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
+from IVAS.configs import STATUSMode
 from IVAS.ui.category_dock import Ui_Form
 from IVAS.widgets.list_item import fit_list_item
 
@@ -27,8 +28,27 @@ class CategoriesDockWidget(QtWidgets.QWidget, Ui_Form):
         self.pushButton_segment = QtWidgets.QPushButton("Segment", self)
         self.pushButton_segment.setObjectName("primaryAction")
         self.pushButton_segment.setToolTip("Segment the selected category with its category name.")
-        self.verticalLayout.insertWidget(2, self.pushButton_segment)
+        self.pushButton_change = QtWidgets.QPushButton("Change", self)
+        self.pushButton_change.setObjectName("changeCategory")
+        self.pushButton_change.setEnabled(False)
+        self.category_actions = QtWidgets.QHBoxLayout()
+        self.category_actions.addWidget(self.pushButton_segment, 1)
+        self.category_actions.addWidget(self.pushButton_change, 1)
+        self.verticalLayout.insertLayout(2, self.category_actions)
+        self.batch_actions = QtWidgets.QHBoxLayout()
+        self.pushButton_segall = QtWidgets.QPushButton("SegAll", self)
+        self.pushButton_segall.setObjectName("segmentAll")
+        self.pushButton_segmiss = QtWidgets.QPushButton("SegMiss", self)
+        self.pushButton_segmiss.setObjectName("segmentMissing")
+        self.batch_actions.addWidget(self.pushButton_segall, 1)
+        self.batch_actions.addWidget(self.pushButton_segmiss, 1)
+        self.verticalLayout.insertLayout(3, self.batch_actions)
         self.pushButton_segment.clicked.connect(self.segment_selected_category)
+        self.pushButton_segall.clicked.connect(self.segment_all)
+        self.pushButton_segmiss.clicked.connect(self.segment_missing)
+        self.pushButton_change.clicked.connect(self.change_selected_category)
+        self.mainwindow.scene.selectionChanged.connect(self.sync_from_selection)
+        self.mainwindow.actionEdit.changed.connect(self.update_change_enabled)
         for button in (self.pushButton_group_mode, self.pushButton_increase,
                        self.pushButton_decrease):
             button.setMaximumWidth(16777215)
@@ -49,6 +69,87 @@ class CategoriesDockWidget(QtWidgets.QWidget, Ui_Form):
 
     def segment_selected_category(self):
         self.mainwindow.text_prompt_dock_widget.predict_for_selected_category()
+
+    def segment_all(self):
+        self.mainwindow.text_prompt_dock_widget.predict_for_folder(missing_only=False)
+
+    def segment_missing(self):
+        self.mainwindow.text_prompt_dock_widget.predict_for_folder(missing_only=True)
+
+    def selected_polygons(self):
+        return [item for item in self.mainwindow.scene.selectedItems()
+                if item in self.mainwindow.polygons and not item.is_drawing]
+
+    def sync_from_selection(self):
+        """Follow canvas/Annos selection without editing any annotation."""
+        selected = self.selected_polygons()
+        if selected:
+            polygon = next((item for item in reversed(self.mainwindow.scene.selected_polygons_list)
+                            if item in selected), selected[0])
+            self.select_category(polygon.category)
+        self.update_change_enabled()
+
+    def select_category(self, category):
+        previous = self.mainwindow.current_category
+        self.mainwindow.current_category = category
+        if (self.lineEdit_search_category.text()
+                and not any(self.listWidget.item(row).data(QtCore.Qt.UserRole) == category
+                            for row in range(self.listWidget.count()))):
+            self.lineEdit_search_category.clear()
+        chosen = None
+        if self.button_group is not None:
+            self.button_group.setExclusive(False)
+        for row in range(self.listWidget.count()):
+            item = self.listWidget.item(row)
+            radio = self.listWidget.itemWidget(item).findChild(QtWidgets.QRadioButton, "label_radio")
+            matches = item.data(QtCore.Qt.UserRole) == category
+            with QtCore.QSignalBlocker(radio):
+                radio.setChecked(matches)
+            if matches:
+                chosen = item
+        if self.button_group is not None:
+            self.button_group.setExclusive(True)
+        self.listWidget.setCurrentItem(chosen)
+        if chosen is not None:
+            self.listWidget.scrollToItem(chosen)
+        else:
+            self.listWidget.clearSelection()
+        if previous != category:
+            self.categoryChanged.emit(category)
+        self.update_change_enabled()
+
+    def update_change_enabled(self):
+        window = self.mainwindow
+        category = window.current_category
+        enabled = (window.load_finished and window.scene._frame_is_editable()
+                   and window.scene.mode in (STATUSMode.VIEW, STATUSMode.EDIT)
+                   and category in window.category_color_dict
+                   and any(polygon.category != category for polygon in self.selected_polygons()))
+        self.pushButton_change.setEnabled(bool(enabled))
+
+    def change_selected_category(self):
+        """Apply the chosen canonical category only after an explicit click."""
+        self.update_change_enabled()
+        if not self.pushButton_change.isEnabled():
+            return
+        window = self.mainwindow
+        category = window.current_category
+        for polygon in self.selected_polygons():
+            if polygon.category == category:
+                continue
+            polygon.set_drawed(category, polygon.group, polygon.iscrowd, polygon.note,
+                               QtGui.QColor(window.category_color_dict[category]))
+            polygon.mark_edited(notify=False)
+            # Preserve the canvas selection highlight while updating its base color.
+            highlight = QtGui.QColor("#00A0FF")
+            highlight.setAlpha(polygon.hover_alpha)
+            polygon.setBrush(highlight)
+            window.annos_dock_widget.update_polygon_category(polygon)
+        if window.current_label is not None:
+            window.current_label.objects = [polygon.to_object() for polygon in window.polygons]
+        # A multi-selection is one edit, including when auto-save is enabled.
+        window.set_saved_state(False)
+        self.update_change_enabled()
 
     def choice_category(self):
         """Shortcut function for category choice."""
@@ -122,6 +223,7 @@ class CategoriesDockWidget(QtWidgets.QWidget, Ui_Form):
             label_radio.toggled.connect(functools.partial(self.radio_choice, index))
             if name == self.mainwindow.current_category:
                 self.listWidget.setCurrentItem(item)
+        self.update_change_enabled()
 
     def radio_choice(self, index: int):
         """
@@ -135,6 +237,7 @@ class CategoriesDockWidget(QtWidgets.QWidget, Ui_Form):
                 self.mainwindow.current_category = self.sender().property("category_name")
                 self.listWidget.setCurrentRow(index)
                 self.categoryChanged.emit(self.mainwindow.current_category)
+                self.update_change_enabled()
 
     def item_choice(self, item: QtWidgets.QListWidgetItem):
         """

@@ -2,6 +2,8 @@
 # @Maintainer: zack zhao
 
 import os
+import io
+from IVAS.utils.persistence import atomic_write_bytes
 from typing import Union
 
 import imgviz
@@ -23,6 +25,7 @@ class VOC(IVAS):
     """
 
     def __init__(self):
+        super().__init__()
         self.keep_crowd = True
         self.is_instance = False
 
@@ -41,7 +44,7 @@ class VOC(IVAS):
         with open(
             os.path.join(png_root, "classification.txt"), "w", encoding="utf-8"
         ) as f:
-            for index, cate in enumerate(self.cates):
+            for index, cate in enumerate(self.semantic_categories()):
                 category_index_dict[cate] = index
                 f.write("{}\n".format(cate))
 
@@ -51,6 +54,12 @@ class VOC(IVAS):
             png_path = os.path.join(png_root, name_without_suffix + ".png")
             self.save_one_voc_png(anno, png_path, cmap, category_index_dict)
         return True
+
+    def semantic_categories(self):
+        categories = ("__background__",) + tuple(dict.fromkeys(cat for cat in self.cates if cat != "__background__"))
+        if len(categories) > 256:
+            raise ValueError("VOC PNG supports at most 255 foreground categories")
+        return categories
 
     def save_one_voc_png(
         self, anno: IVAS.ANNO, png_path: str, cmap: np.ndarray, category_index_dict=None
@@ -75,6 +84,10 @@ class VOC(IVAS):
         img = np.zeros(shape=(height, width), dtype=np.uint8)
 
         objects = sorted(objects, key=lambda obj: obj.layer)
+        groups = list(dict.fromkeys(obj.group for obj in objects if obj.category != "__background__"))
+        instance_indices = {group: index + 1 for index, group in enumerate(groups)}
+        if self.is_instance and len(instance_indices) > 255:
+            raise ValueError("VOC PNG supports at most 255 instances")
 
         for obj in objects:
             category = obj.category
@@ -90,8 +103,8 @@ class VOC(IVAS):
             bbox = obj.bbox
             segmentation = [(int(p[1]), int(p[0])) for p in segmentation]
 
-            if self.is_instance and group != "":
-                group = int(group)
+            if self.is_instance:
+                group = 0 if category == "__background__" else instance_indices[group]
                 assert (
                     0 <= group < 256
                 ), "When use VOC for segmentation, the group must in [0, 255], but get group={}".format(
@@ -99,7 +112,9 @@ class VOC(IVAS):
                 )
                 self.fill_polygon(segmentation, img, color=group)
             else:
-                index = category_index_dict.get(category, 0)
+                if category not in (category_index_dict or {}):
+                    raise ValueError("Unknown VOC category: {}".format(category))
+                index = category_index_dict[category]
                 assert (
                     0 <= index < 256
                 ), "When use VOC for segmentation, the number of classifications must in [0, 255], but get {}".format(
@@ -110,7 +125,9 @@ class VOC(IVAS):
         img = Image.fromarray(img.astype(np.uint8), mode="P")
 
         img.putpalette(cmap.flatten())
-        img.save(png_path)
+        buffer = io.BytesIO()
+        img.save(buffer, format="PNG")
+        atomic_write_bytes(png_path, buffer.getvalue())
         return True
 
     @staticmethod

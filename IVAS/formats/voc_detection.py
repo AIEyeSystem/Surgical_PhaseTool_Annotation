@@ -2,6 +2,7 @@
 # @Maintainer: zack zhao
 
 import os
+from IVAS.utils.persistence import atomic_write_bytes
 from xml.etree import ElementTree as ET
 
 import tqdm
@@ -18,6 +19,7 @@ class VOCDetect(IVAS):
     """
 
     def __init__(self):
+        super().__init__()
         self.keep_crowd = True
 
     def save_to_XML(self, xml_root: str) -> bool:
@@ -38,7 +40,7 @@ class VOCDetect(IVAS):
                     "Save xml to {}".format(name_without_suffix + ".xml")
                 )
             except Exception as e:
-                raise "{} {}".format(name_without_suffix, e)
+                raise ValueError("{}: {}".format(name_without_suffix, e)) from e
         return True
 
     def save_one_voc_xml(self, anno: IVAS.ANNO, xml_path: str) -> bool:
@@ -122,6 +124,8 @@ class VOCDetect(IVAS):
                 difficult.text = "0"
                 object.append(difficult)
 
+                if not xs or not ys:
+                    continue
                 bndbox = ET.Element("bndbox")
                 xmin = ET.Element("xmin")
                 xmin.text = "{}".format(int(min(xs)))
@@ -140,5 +144,5 @@ class VOCDetect(IVAS):
                 bndbox.append(ymax)
                 object.append(bndbox)
                 annotation.append(object)
-        tree.write(xml_path, encoding="utf-8", xml_declaration=True)
+        atomic_write_bytes(xml_path, ET.tostring(annotation, encoding="utf-8", xml_declaration=True))
         return True

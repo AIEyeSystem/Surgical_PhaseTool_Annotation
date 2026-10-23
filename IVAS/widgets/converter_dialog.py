@@ -6,6 +6,7 @@ import os
 import imgviz
 import numpy as np
 import yaml
+from IVAS.configs import save_config
 from PIL import ImageColor
 from PyQt5 import QtCore, QtWidgets
 from IVAS.widgets.responsive import ResponsiveDialog
@@ -34,11 +35,27 @@ class Converter(QThread, IVAS):
 
     def __init__(self):
         super(Converter, self).__init__()
+        IVAS.__init__(self)
         self.cancel = False
         self.ivas_json_root = None
+        self.errors = []
 
     def run(self):
+        self.errors = []
+        try:
+            self.convert()
+        except Exception as error:
+            self.report_error(error)
+        finally:
+            state = "Cancelled" if self.cancel else "Completed"
+            self.message.emit(-1, -1, "{}; {} error(s).".format(state, len(self.errors)))
+
+    def convert(self):
         raise NotImplementedError
+
+    def report_error(self, error):
+        self.errors.append(str(error))
+        self.message.emit(-1, -1, "Error: {}".format(error))
 
     def load_from_ivas(self):
         self.annos.clear()
@@ -63,7 +80,7 @@ class Converter(QThread, IVAS):
                 anno = self.load_one_ivas_json(os.path.join(self.ivas_json_root, file))
                 self.annos[self.remove_file_suffix(file)] = anno
             except Exception as e:
-                self.message.emit(-1, -1, " " * 18 + "| Error: {}.".format(e))
+                self.report_error(e)
 
         # load cates
         self.message.emit(-1, -1, " " * 18 + "| Loading cats.")
@@ -71,7 +88,7 @@ class Converter(QThread, IVAS):
         if category_config is not None:
             cates = []
             with open(category_config, "rb") as f:
-                cfg = yaml.load(f.read(), Loader=yaml.FullLoader)
+                cfg = yaml.safe_load(f.read()) or {}
             for label in cfg.get("label", []):
                 cates.append(label.get("name"))
             self.cates = tuple(cates)
@@ -111,23 +128,21 @@ class Converter(QThread, IVAS):
                 )
 
             except Exception as e:
-                self.message.emit(-1, -1, " " * 18 + "| Error: {}.".format(e))
+                self.report_error(e)
 
         # 类别文件
         cmap = imgviz.label_colormap()
         cates = sorted(self.cates)
         categories = []
         for index, cat in enumerate(cates):
-            r, g, b = cmap[index + 1]
+            r, g, b = cmap[(index + 1) % len(cmap)]
             categories.append(
                 {
                     "name": cat if isinstance(cat, str) else str(cat),
                     "color": "#{:02x}{:02x}{:02x}".format(r, g, b),
                 }
             )
-        s = yaml.dump({"label": categories})
-        with open(os.path.join(self.ivas_json_root, CATEGORY_CONFIG_NAME), "w") as f:
-            f.write(s)
+        save_config({"label": categories}, os.path.join(self.ivas_json_root, CATEGORY_CONFIG_NAME))
 
         return True
 
@@ -140,7 +155,7 @@ class COCOConverter(Converter, COCO):
         self.keep_crowd = False
         self.coco2ivas = True
 
-    def run(self):
+    def convert(self):
         if self.coco_json_path is None or self.ivas_json_root is None:
             return
 
@@ -159,12 +174,11 @@ class COCOConverter(Converter, COCO):
             self.message.emit(-1, -1, " " * 18 + "| Loaded.")
 
         except Exception as e:
-            self.message.emit(-1, -1, " " * 18 + "| Error: {}.".format(e))
+            self.report_error(e)
             return
 
         # convert to ivas
         self.convert_to_ivas()
-        self.message.emit(-1, -1, " " * 18 + "| Finished.")
         return True
 
     def ivas_to_coco(self):
@@ -180,8 +194,7 @@ class COCOConverter(Converter, COCO):
         try:
             self.save_to_coco(self.coco_json_path, self.cates)
         except Exception as e:
-            self.message.emit(-1, -1, " " * 18 + "| Error: {}.".format(e))
-        self.message.emit(-1, -1, " " * 18 + "| Finished.")
+            self.report_error(e)
         return True
 
 
@@ -195,7 +208,7 @@ class YOLOConverter(Converter, YOLO):
 
         self.yolo2ivas = True
 
-    def run(self):
+    def convert(self):
         if self.yolo2ivas:
             if (
                 self.yolo_images_root is None
@@ -210,6 +223,8 @@ class YOLOConverter(Converter, YOLO):
             self.ivas_to_yolo()
 
     def yolo_to_ivas(self):
+        self.annos.clear()
+        self.cates = ()
         self.message.emit(-1, -1, " " * 18 + "| -- YOLO to IVAS --")
 
         # load category file
@@ -253,7 +268,7 @@ class YOLOConverter(Converter, YOLO):
                 anno = self.load_one_yolo_txt(image_path, txt_path, class_dict)
                 self.annos[name_without_suffix] = anno
             except Exception as e:
-                self.message.emit(-1, -1, " " * 18 + "| Error: {}.".format(e))
+                self.report_error(e)
 
         # cates
         if class_dict is not None:
@@ -269,7 +284,6 @@ class YOLOConverter(Converter, YOLO):
 
         # convert to ivas
         self.convert_to_ivas()
-        self.message.emit(-1, -1, " " * 18 + "| Finished.")
 
         return True
 
@@ -311,8 +325,7 @@ class YOLOConverter(Converter, YOLO):
                 )
                 self.save_one_yolo_txt(anno, txt_path, cates_index_dict)
             except Exception as e:
-                self.message.emit(-1, -1, " " * 18 + "| Error: {}.".format(e))
-        self.message.emit(-1, -1, " " * 18 + "| Finished.")
+                self.report_error(e)
         return True
 
 
@@ -323,7 +336,7 @@ class LABELMEConverter(Converter, LABELME):
         self.labelme_json_root = None
         self.labelme2ivas = True
 
-    def run(self):
+    def convert(self):
         if self.labelme_json_root is None or self.ivas_json_root is None:
             return
         if self.labelme2ivas:
@@ -332,6 +345,8 @@ class LABELMEConverter(Converter, LABELME):
             self.ivas_to_labelme()
 
     def labelme_to_ivas(self):
+        self.annos.clear()
+        self.cates = ()
         self.message.emit(-1, -1, " " * 18 + "| -- IVAS to IVAS --")
 
         # load from labelme
@@ -362,7 +377,7 @@ class LABELMEConverter(Converter, LABELME):
                 )
                 self.annos[name_without_suffix] = anno
             except Exception as e:
-                self.message.emit(-1, -1, " " * 18 + "| Error: {}.".format(e))
+                self.report_error(e)
 
         # cats
         class_set = set()
@@ -376,7 +391,6 @@ class LABELMEConverter(Converter, LABELME):
 
         # save to ivas
         self.convert_to_ivas()
-        self.message.emit(-1, -1, " " * 18 + "| Finished.")
 
         return True
 
@@ -405,9 +419,8 @@ class LABELMEConverter(Converter, LABELME):
             try:
                 self.save_one_labelme_json(anno, json_path)
             except Exception as e:
-                self.message.emit(-1, -1, " " * 18 + "| Error: {}.".format(e))
+                self.report_error(e)
 
-        self.message.emit(-1, -1, " " * 18 + "| Finished.")
         return True
 
 
@@ -418,11 +431,12 @@ class VOCConverter(Converter, VOC):
         self.voc_png_root = None
         self.use_setting_color = False
 
-    def run(self):
+    def convert(self):
         if self.ivas_json_root is not None and self.voc_png_root is not None:
             self.ivas_to_voc()
 
     def ivas_to_voc(self):
+        os.makedirs(self.voc_png_root, exist_ok=True)
         self.message.emit(-1, -1, " " * 18 + "| -- IVAS to VOC --")
 
         # Load from IVAS-compatible annotation data.
@@ -436,14 +450,14 @@ class VOCConverter(Converter, VOC):
         if not self.is_instance and self.use_setting_color:
             if category_config is not None:
                 with open(category_config, "rb") as f:
-                    cfg = yaml.load(f.read(), Loader=yaml.FullLoader)
+                    cfg = yaml.safe_load(f.read()) or {}
 
                 labels = cfg.get("label", [])
-                cmap = np.zeros((len(self.cates), 3), dtype=np.uint8)
-
-                for index, label_dict in enumerate(labels):
+                indices = {category: index for index, category in enumerate(self.semantic_categories())}
+                for label_dict in labels:
                     color = label_dict.get("color", "#000000")
-                    cmap[index] = ImageColor.getrgb(color)
+                    if label_dict.get("name") in indices:
+                        cmap[indices[label_dict["name"]]] = ImageColor.getrgb(color)
             else:
                 self.message.emit(
                     -1,
@@ -457,7 +471,7 @@ class VOCConverter(Converter, VOC):
         if not self.is_instance:
             category_index_dict = {}
             with open(os.path.join(self.voc_png_root, "classification.txt"), "w") as f:
-                for index, cate in enumerate(self.cates):
+                for index, cate in enumerate(self.semantic_categories()):
                     category_index_dict[cate] = index
                     f.write("{}\n".format(cate))
         else:
@@ -480,9 +494,8 @@ class VOCConverter(Converter, VOC):
                 )
                 self.save_one_voc_png(anno, png_path, cmap, category_index_dict)
             except Exception as e:
-                self.message.emit(-1, -1, " " * 18 + "| Error: {}.".format(e))
+                self.report_error(e)
 
-        self.message.emit(-1, -1, " " * 18 + "| Finished.")
         return True
 
 
@@ -492,7 +505,7 @@ class VOCConverterForDetection(Converter, VOCDetect):
         self.ivas_json_root = None
         self.voc_xml_root = None
 
-    def run(self):
+    def convert(self):
         if self.ivas_json_root is not None and self.voc_xml_root is not None:
             self.ivas_to_voc_for_detection()
 
@@ -521,8 +534,7 @@ class VOCConverterForDetection(Converter, VOCDetect):
                 self.save_one_voc_xml(anno, xml_path)
 
             except Exception as e:
-                self.message.emit(-1, -1, " " * 18 + "| Error: {}.".format(e))
-        self.message.emit(-1, -1, " " * 18 + "| Finished.")
+                self.report_error(e)
         return True
 
 
@@ -553,6 +565,8 @@ class ConverterDialog(ResponsiveDialog, Ui_Dialog):
             self.mainwindow.cfg["software"]["current_converter"] = "coco"
 
     def apply(self):
+        if self.converter is not None and self.converter.isRunning():
+            return
         self.tabWidget.setEnabled(False)
         self.pushButton_start.setEnabled(False)
         self.progressBar.reset()
@@ -579,7 +593,7 @@ class ConverterDialog(ResponsiveDialog, Ui_Dialog):
                         self.checkBox_coco2ivas_keep_crowd.isChecked()
                     )
 
-                    self.converter.run()
+                    self._start_converter()
                 else:
                     QtWidgets.QMessageBox.warning(self, "", "")
 
@@ -602,7 +616,7 @@ class ConverterDialog(ResponsiveDialog, Ui_Dialog):
                         self.checkBox_ivas2coco_keep_crowd.isChecked()
                     )
 
-                    self.converter.run()
+                    self._start_converter()
                 else:
                     QtWidgets.QMessageBox.warning(self, "", "")
 
@@ -632,7 +646,7 @@ class ConverterDialog(ResponsiveDialog, Ui_Dialog):
                             self.lineEdit_yolo2ivas_yolo_cate_path.text()
                         )
 
-                    self.converter.run()
+                    self._start_converter()
                 else:
                     QtWidgets.QMessageBox.warning(self, "", "")
 
@@ -653,7 +667,7 @@ class ConverterDialog(ResponsiveDialog, Ui_Dialog):
                         self.lineEdit_ivas2yolo_yolo_txt_root.text()
                     )
 
-                    self.converter.run()
+                    self._start_converter()
                 else:
                     QtWidgets.QMessageBox.warning(self, "", "")
 
@@ -675,7 +689,7 @@ class ConverterDialog(ResponsiveDialog, Ui_Dialog):
                         self.lineEdit_labelme2ivas_ivas_json_root.text()
                     )
 
-                    self.converter.run()
+                    self._start_converter()
                 else:
                     QtWidgets.QMessageBox.warning(self, "", "")
 
@@ -695,7 +709,7 @@ class ConverterDialog(ResponsiveDialog, Ui_Dialog):
                         self.lineEdit_ivas2labelme_labelme_json_root.text()
                     )
 
-                    self.converter.run()
+                    self._start_converter()
                 else:
                     QtWidgets.QMessageBox.warning(self, "", "")
 
@@ -718,7 +732,7 @@ class ConverterDialog(ResponsiveDialog, Ui_Dialog):
                 self.checkBox_use_setting_color.setEnabled(
                     not self.checkBox_is_instance.isChecked()
                 )
-                self.converter.run()
+                self._start_converter()
             else:
                 QtWidgets.QMessageBox.warning(self, "", "")
 
@@ -736,14 +750,36 @@ class ConverterDialog(ResponsiveDialog, Ui_Dialog):
                 self.converter.voc_xml_root = (
                     self.lineEdit_ivas2vocod_voc_xml_root.text()
                 )
-                self.converter.run()
+                self._start_converter()
             else:
                 QtWidgets.QMessageBox.warning(self, "", "")
 
         else:
             pass
+        if self.converter is None or not self.converter.isRunning():
+            self._converter_finished()
+
+    def reject(self):
+        self.close()
+
+    def _start_converter(self):
+        self._close_when_finished = False
+        self.converter.finished.connect(self._converter_finished)
+        self.converter.start()
+
+    def _converter_finished(self):
         self.tabWidget.setEnabled(True)
         self.pushButton_start.setEnabled(True)
+        if getattr(self, "_close_when_finished", False):
+            self.close()
+
+    def closeEvent(self, event):
+        if self.converter is not None and self.converter.isRunning():
+            self._close_when_finished = True
+            self.converter.cancel = True
+            event.ignore()
+            return
+        super().closeEvent(event)
 
     def cancel(self):
         try:

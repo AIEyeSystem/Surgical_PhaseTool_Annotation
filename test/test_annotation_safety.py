@@ -43,7 +43,7 @@ class AnnotationSafetyTests(unittest.TestCase):
                             {
                                 "category": "lens",
                                 "group": 1,
-                                "segmentation": [],
+                                "segmentation": [[0, 0], [3, 0], [3, 3]],
                                 "iscrowd": "false",
                             }
                         ],

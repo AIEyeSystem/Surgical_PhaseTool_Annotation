@@ -1,4 +1,5 @@
 """Qt responsiveness and stale-result regressions with a controllable SAM double."""
+import json
 import os
 from pathlib import Path
 import tempfile
@@ -11,6 +12,8 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 import numpy as np
 from PIL import Image
 from PyQt5 import QtCore, QtTest, QtWidgets
+
+from IVAS.configs import CONTOURMode
 
 
 class InteractiveMaskTests(unittest.TestCase):
@@ -98,17 +101,24 @@ class InteractiveMaskTests(unittest.TestCase):
         self.assertFalse(self.scene._mask_pending)
 
     def test_finish_waits_for_latest_mask_without_saving_an_old_preview(self):
+        label_path = Path(self.window.current_label.label_path)
         self._point(10)
         self._wait(self.entered.is_set)
         self._point(20)
         self.scene.finish_draw()
         self.assertTrue(self.scene._finish_mask_when_ready)
         self.assertEqual(self.window.polygons, [])
-        self.gate.set()
-        self._wait(lambda: self.scene._mask_worker is None)
+        self.assertFalse(label_path.exists())
+        with mock.patch.object(self.window, "save", wraps=self.window.save) as save:
+            self.gate.set()
+            self._wait(lambda: self.scene._mask_worker is None)
+        save.assert_called_once_with()
         self.assertEqual([len(points) for points in self.calls], [1, 2])
         self.assertEqual(len(self.window.polygons), 1)
-        self.assertFalse(self.window.saved)
+        self.assertTrue(self.window.saved)
+        objects = json.loads(label_path.read_text(encoding="utf-8"))["objects"]
+        self.assertEqual(len(objects), 1)
+        self.assertEqual(objects[0]["category"], self.window.current_category)
 
     def test_cancel_drops_pending_and_late_results(self):
         self._point(10)
@@ -121,6 +131,23 @@ class InteractiveMaskTests(unittest.TestCase):
         self.assertEqual(len(self.calls), 1)
         self.assertIsNone(self.scene.mask)
         self.assertEqual(self.window.polygons, [])
+        self.assertFalse(Path(self.window.current_label.label_path).exists())
+
+    def test_finish_saves_all_mask_components_in_one_write_with_auto_save_enabled(self):
+        self.window.cfg["software"]["auto_save"] = True
+        self.scene.contour_mode = CONTOURMode.SAVE_EXTERNAL
+        mask = np.zeros((48, 64), dtype=np.uint8)
+        mask[5:15, 5:15] = 1
+        mask[25:40, 35:50] = 1
+        self.segany.predict_with_point_prompt = mock.Mock(return_value=mask)
+        self._point(10)
+        self._wait(lambda: self.scene._mask_worker is None)
+        with mock.patch.object(self.window, "save", wraps=self.window.save) as save:
+            self.window.actionFinish.trigger()
+        save.assert_called_once_with()
+        objects = json.loads(Path(self.window.current_label.label_path).read_text(encoding="utf-8"))["objects"]
+        self.assertEqual(len(objects), 2)
+        self.assertTrue(self.window.saved)
 
     def test_old_frame_result_cannot_paint_new_image(self):
         self._point(10)
@@ -145,6 +172,7 @@ class InteractiveMaskTests(unittest.TestCase):
         self.assertFalse(self.scene._finish_mask_when_ready)
         self.assertEqual(self.window.polygons, [])
         self.assertIn("inference failed", self.window.statusbar.currentMessage())
+        self.assertFalse(Path(self.window.current_label.label_path).exists())
         self.segany.predict_with_point_prompt = self._predict
         self.gate.set()
         self.scene.update_mask()
@@ -172,3 +200,7 @@ class InteractiveMaskTests(unittest.TestCase):
         self._wait(lambda: self.scene._mask_worker is None)
         self.assertEqual(len(boxes), 2)
         np.testing.assert_array_equal(boxes[-1], [5, 6, 35, 40])
+        self.window.actionFinish.trigger()
+        self.assertTrue(self.window.saved)
+        objects = json.loads(Path(self.window.current_label.label_path).read_text(encoding="utf-8"))["objects"]
+        self.assertEqual(len(objects), 1)

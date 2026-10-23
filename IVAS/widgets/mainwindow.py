@@ -219,7 +219,8 @@ class SegAnyThread(QThread):
         # A request can arrive between run() returning and QThread finishing.
         with self._request_lock:
             pending = self._request and self._request[0] != self._completed_serial
-        if pending and not self.isRunning() and not self.mainwindow._shutdown_started:
+        if (pending and not self.isRunning() and not self.mainwindow._shutdown_started
+                and not getattr(self.mainwindow, "_closing_requested", False)):
             self.start()
 
     def sam_encoder(self, image: np.ndarray):
@@ -370,7 +371,11 @@ class SegAnyThread(QThread):
                 cached = self.results_dict.get(index)
             image_path = os.path.join(image_root, files[index])
             try:
-                if cached is None or cached.get("image_path") != image_path:
+                stat = os.stat(image_path)
+                signature = (stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns,
+                             getattr(self.mainwindow, "sam_model_generation", 0))
+                if (cached is None or cached.get("image_path") != image_path
+                        or cached.get("signature") != signature):
                     self.statusReady.emit(serial, index, 2, "")
                     if image_path.lower().endswith(".dcm"):
                         from IVAS.utils.dicom import load_dcm_as_image
@@ -380,14 +385,20 @@ class SegAnyThread(QThread):
                         with Image.open(image_path) as image:
                             image_data = np.array(image.convert("RGB"))
                     features, original_size, input_size = self.sam_encoder(image_data)
+                    after = os.stat(image_path)
+                    if (after.st_size, after.st_mtime_ns, after.st_ctime_ns,
+                            getattr(self.mainwindow, "sam_model_generation", 0)) != signature:
+                        raise ValueError("Image or model changed during encoding; request encoding again")
                     cached = {
                         "features": features, "original_size": original_size,
                         "input_size": input_size, "image_path": image_path,
+                        "signature": signature,
                     }
             except Exception as error:
                 with self._request_lock:
                     self._completed_serial = serial
                     if self._request == request:
+                        self.results_dict.pop(index, None)
                         self.statusReady.emit(serial, index, 3, str(error))
                 continue
             with self._request_lock:
@@ -611,6 +622,8 @@ class InitSegAnyThread(QThread):
 
         sam_tag = False
         sam_video_tag = False
+        if self.isInterruptionRequested():
+            return
         if self.model_path is not None:
             # 在后台线程中释放旧模型资源，避免主线程阻塞
             # 先保存旧模型引用并立即置空 mainwindow 的引用，防止主线程访问已释放的模型
@@ -642,6 +655,8 @@ class InitSegAnyThread(QThread):
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
 
+            if self.isInterruptionRequested():
+                return
             try:
                 self.mainwindow.segany = SegAny(
                     self.model_path,
@@ -653,6 +668,8 @@ class InitSegAnyThread(QThread):
                 self.error_message = str(e)
                 self.mainwindow.segany = None
                 sam_tag = False
+            if self.isInterruptionRequested():
+                return
             model_name = os.path.basename(self.model_path).lower()
             supports_video_facade = "sam2" in model_name or "sam3" in model_name
             if (
@@ -672,7 +689,8 @@ class InitSegAnyThread(QThread):
                 self.mainwindow.segany_video = None
 
         sam_video_tag = sam_tag and sam_video_tag
-        self.tag.emit(sam_tag, sam_video_tag)
+        if not self.isInterruptionRequested():
+            self.tag.emit(sam_tag, sam_video_tag)
 
 
 class CheckLatestVersionThread(QThread):
@@ -837,6 +855,16 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if not checked:
             return
 
+        workspace = self.video_annotation_workspace
+        candidates = [getattr(self, "seganythread", None),
+                      getattr(self.text_prompt_dock_widget, "_worker", None),
+                      getattr(self.visual_prompt_dock_widget, "_worker", None),
+                      getattr(workspace, "_tracking_worker", None),
+                      getattr(getattr(self, "auto_segment_dialog", None), "auto_segment_thread", None)]
+        if any(callable(getattr(worker, "isRunning", None)) and worker.isRunning() for worker in candidates):
+            self.statusbar.showMessage("请等待当前编码、分割或追踪任务结束后再切换模型。", 5000)
+            return
+
         mask_worker = self.scene._mask_worker
         if mask_worker is not None:
             self.statusbar.showMessage("当前分割任务尚未结束，请完成或取消后再切换模型。", 4000)
@@ -870,7 +898,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         try:
             self.seganythread.invalidate()
             self.seganythread.requestInterruption()
-            self.seganythread.wait()
         except:
             if isinstance(self.sender(), QtWidgets.QAction):
                 self.sender().setChecked(False)
@@ -918,6 +945,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if self.use_remote_sam:
             sam_video_tag = False
 
+        if getattr(self, "_closing_requested", False):
+            return
         torch = None
         if sam_tag:
             import torch as _torch
@@ -1235,52 +1264,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             )
         return self._process_sam_masks(masks, scores, visual_category)
 
-    def mask_to_polygon(self, mask:np.ndarray):
-        # OpenCV is only needed after an image has been segmented. Importing
-        # it here keeps native DLL discovery off the frozen first-paint path.
-        import cv2
-
-        mask = mask.astype("uint8") * 255
-        h, w = mask.shape[-2:]
-        mask = mask.reshape(h, w)
-
-        if self.scene.contour_method == CONTOURMethod.SIMPLE:
-            contour_method = cv2.CHAIN_APPROX_SIMPLE
-        elif self.scene.contour_method == CONTOURMethod.TC89_KCOS:
-            contour_method = cv2.CHAIN_APPROX_TC89_KCOS
-        elif self.scene.contour_method == CONTOURMethod.NONE:
-            contour_method = cv2.CHAIN_APPROX_NONE
-        else:
-            contour_method = cv2.CHAIN_APPROX_SIMPLE
-
-        if self.scene.contour_mode == CONTOURMode.SAVE_ALL:
-            # 当保留所有轮廓时，检测所有轮廓，并建立二层等级关系
-            contours, hierarchy = cv2.findContours(
-                mask, cv2.RETR_CCOMP, contour_method
-            )
-        else:
-            # 当只保留外轮廓或单个mask时，只检测外轮廓
-            contours, hierarchy = cv2.findContours(
-                mask, cv2.RETR_EXTERNAL, contour_method
-            )
-
-        if contours and (self.scene.contour_mode == CONTOURMode.SAVE_MAX_ONLY):
-            largest_contour = max(
-                contours, key=cv2.contourArea
-            )  # 只保留面积最大的轮廓
-            contours = [largest_contour]
-
-        # polydp
-        if self.cfg["software"]["use_polydp"]:
-            epsilon_factor = 0.001
-            polydp_contours = []
-            for contour in contours:
-                epsilon = epsilon_factor * cv2.arcLength(contour, True)
-                contour = cv2.approxPolyDP(contour, epsilon, True)
-                polydp_contours.append(contour)
-            contours = polydp_contours
-
-        return contours, hierarchy
+    def mask_to_polygon(self, mask: np.ndarray):
+        from IVAS.utils.masks import mask_to_polygons
+        return mask_to_polygons(mask, self.scene.contour_mode, self.scene.contour_method,
+                                self.cfg["software"]["use_polydp"])
 
     def _setup_polygon_alpha(self, polygon):
         """Set hover and nohover alpha for a polygon from config."""
@@ -1961,14 +1948,20 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.menuTemporalExport.addAction(self.actionTemporal_export)
 
         self.menuFile.clear()
+        self.file_image_heading = self._add_file_menu_heading("Image")
         self.menuFile.addAction(self.actionImages_dir)
+        self.menuFile.addAction(self.actionLabel_dir)
+        self.menuFile.addSeparator()
+        self.file_video_heading = self._add_file_menu_heading("Video")
         self.menuFile.addAction(self.actionOpen_video_workspace)
         self.menuFile.addAction(self.actionOpen_video_project_manifest)
-        self.menuFile.addSeparator()
-        self.menuFile.addAction(self.actionSave)
+        self.menuFile.addAction(self.actionVideo_output_root)
+        self.menuFile.addAction(self.actionVideo_relink)
         self.menuFile.addMenu(self.menuTemporalImport)
         self.menuFile.addMenu(self.menuTemporalExport)
         self.menuFile.addSeparator()
+        self.file_general_heading = self._add_file_menu_heading("General")
+        self.menuFile.addAction(self.actionSave)
         self.menuFile.addAction(self.actionSetting)
         self.menuFile.addAction(self.actionExit)
 
@@ -2293,6 +2286,16 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             return
         self._invoke_video_command(method_name, *arguments)
 
+    def _add_file_menu_heading(self, text):
+        """Use a non-interactive label so section titles also render with QSS."""
+        heading = QtWidgets.QLabel(text, self.menuFile)
+        heading.setObjectName("fileMenuHeading")
+        action = QtWidgets.QWidgetAction(self.menuFile)
+        action.setDefaultWidget(heading)
+        action.setEnabled(False)
+        self.menuFile.addAction(action)
+        return heading
+
     def _make_tool_menu(self, text, actions, object_name=""):
         button = QtWidgets.QToolButton(self)
         button.setText(text)
@@ -2348,26 +2351,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.menuProjectLocations.setObjectName("menuProjectLocations")
         self.workspace_tools_button = self.mode_tools_button
         self.toolBar.addWidget(self.project_tools_button)
-        self.toolBar.addSeparator()
-        self.toolBar.addAction(self.actionPrev_image)
-        self.toolBar.addAction(self.actionNext_image)
-        self.annotation_tools_button = self._make_tool_menu(
-            "帧标注",
-            [
-                self.actionSegment_anything_point,
-                self.actionSegment_anything_box,
-                self.actionPolygon,
-                self.actionRepaint,
-            ],
-            "primaryToolMenu",
-        )
-        self.annotation_tools_button.setAccessibleName("标注工具菜单")
-        self.toolBar.addWidget(self.annotation_tools_button)
-        self.toolBar.addAction(self.actionFinish)
-        self.toolBar.addAction(self.actionCancel)
-        self.toolBar.addAction(self.actionSave)
-        self.toolBar.addSeparator()
-
         self.annotate_video_frame_button = self._make_action_button(
             self.actionAnnotate_current_video_frame, "annotateVideoFrameButton"
         )
@@ -2380,6 +2363,27 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.return_to_video_widget_action = self.toolBar.addWidget(
             self.return_to_video_button
         )
+        self.toolBar.addSeparator()
+        self.toolBar.addAction(self.actionPrev_image)
+        self.toolBar.addAction(self.actionNext_image)
+        self.toolBar.addSeparator()
+        self._frame_annotation_actions = (
+            self.actionPolygon,
+            self.actionSegment_anything_point,
+            self.actionSegment_anything_box,
+            self.actionRepaint,
+        )
+        for action in self._frame_annotation_actions:
+            self.toolBar.addAction(action)
+            self.toolBar.widgetForAction(action).setToolButtonStyle(
+                QtCore.Qt.ToolButtonTextBesideIcon
+            )
+        self.toolBar.addSeparator()
+        self.toolBar.addAction(self.actionFinish)
+        self.toolBar.addAction(self.actionCancel)
+        self.toolBar.addAction(self.actionSave)
+        self.toolBar.addSeparator()
+
         self.toolBar.addAction(self.actionFit_window)
 
         # Retain the retired direct-write tracking menu object for plugin/API
@@ -2558,10 +2562,21 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self._default_inspector_docks = frozenset(
             (self.categories_dock, self.annos_dock, self.files_dock)
         )
-        for dock in self._inspector_docks:
+        self._sized_inspector_docks = self._inspector_docks + (self.temporal_dock,)
+        self._inspector_original_minimums = {
+            dock: dock.minimumWidth() for dock in self._sized_inspector_docks
+        }
+        self._inspector_width_signature = None
+        self._inspector_width_timer = QtCore.QTimer(self)
+        self._inspector_width_timer.setSingleShot(True)
+        self._inspector_width_timer.timeout.connect(self._adapt_inspector_width)
+        for dock in self._sized_inspector_docks:
             content = dock.widget()
             scroll = scrollable_content(content, dock)
             dock.setWidget(scroll)
+            dock.visibilityChanged.connect(self._schedule_inspector_width)
+            dock.dockLocationChanged.connect(self._schedule_inspector_width)
+            dock.topLevelChanged.connect(self._schedule_inspector_width)
 
         self.panels_menu = QtWidgets.QMenu("Panels", self.menuView)
         self.panels_menu.setObjectName("menuPanels")
@@ -2675,7 +2690,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self._set_shared_video_transport_visible(video_frame_context)
             self.categories_dock.raise_()
 
-        self.resizeDocks([self.categories_dock], [360], QtCore.Qt.Horizontal)
+        self._inspector_width_signature = None
+        self._schedule_inspector_width()
         self._configure_dock_tabs()
         if has_video_project:
             self.resizeDocks([self.timeline_dock], [132], QtCore.Qt.Vertical)
@@ -2706,7 +2722,70 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         handled = super().event(event)
         if event.type() in (QtCore.QEvent.LayoutRequest, QtCore.QEvent.Show):
             self._configure_dock_tabs()
+        if event.type() == QtCore.QEvent.Resize:
+            self._adapt_frame_toolbar()
+        if event.type() in (QtCore.QEvent.LayoutRequest, QtCore.QEvent.Show,
+                            QtCore.QEvent.Resize, QtCore.QEvent.FontChange,
+                            QtCore.QEvent.StyleChange):
+            self._schedule_inspector_width()
+        if event.type() == QtCore.QEvent.Show:
+            handle = self.windowHandle()
+            if handle is not None and not getattr(self, "_inspector_screen_connected", False):
+                handle.screenChanged.connect(self._schedule_inspector_width)
+                self._inspector_screen_connected = True
         return handled
+
+    def _schedule_inspector_width(self, *_args):
+        timer = getattr(self, "_inspector_width_timer", None)
+        if timer is not None and not timer.isActive():
+            timer.start(0)
+
+    def _adapt_inspector_width(self):
+        """Fit the right inspector to its controls while retaining canvas space."""
+        if not self.isVisible() or self._shutdown_started:
+            return
+        right_docks = []
+        required_widths = []
+        for dock in self._sized_inspector_docks:
+            if dock.isFloating() or self.dockWidgetArea(dock) != QtCore.Qt.RightDockWidgetArea:
+                dock.setMinimumWidth(self._inspector_original_minimums[dock])
+                continue
+            if dock.isHidden():
+                continue
+            scroll = dock.widget()
+            content = scroll.widget()
+            # Account for styled/translated forms and reserve the vertical
+            # scrollbar even before it appears at shorter screen heights.
+            minimum = content.minimumSizeHint().expandedTo(content.minimumSize()).width()
+            required = minimum + scroll.verticalScrollBar().sizeHint().width() + 8
+            right_docks.append(dock)
+            required_widths.append(required)
+        signature = (self.width(), self.devicePixelRatioF(), tuple(zip(right_docks, required_widths)))
+        if signature == self._inspector_width_signature:
+            return  # Keep a user's splitter adjustment until the available space changes.
+        self._inspector_width_signature = signature
+        if not right_docks:
+            return
+        # Qt sizes are logical pixels, so OS scaling is already reflected here.
+        # Very small windows retain scrollbars instead of expanding off-screen.
+        budget = max(160, int(self.width() * 0.48))
+        minimum = min(budget, max(300, max(required_widths)))
+        preferred = min(budget, max(minimum, min(560, max(360, int(self.width() * 0.28)))))
+        for dock in right_docks:
+            dock.setMinimumWidth(minimum)
+        active_dock = next((dock for dock in right_docks if not dock.visibleRegion().isEmpty()), right_docks[0])
+        self.resizeDocks([active_dock], [preferred], QtCore.Qt.Horizontal)
+
+    def _adapt_frame_toolbar(self):
+        """Keep drawing tools directly reachable when the window is narrow."""
+        style = (QtCore.Qt.ToolButtonTextBesideIcon if self.width() >= 1100
+                 else QtCore.Qt.ToolButtonIconOnly)
+        for action in getattr(self, "_frame_annotation_actions", ()):
+            button = self.toolBar.widgetForAction(action)
+            if button is not None and button.toolButtonStyle() != style:
+                button.setMinimumWidth(0)
+                button.setToolButtonStyle(style)
+                button.setMinimumWidth(button.sizeHint().width())
 
     def _translate_canvas_first_layout(self, language):
         is_zh = language == "zh"
@@ -2775,6 +2854,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def _apply_frame_action_constraints(self):
         """Apply display/editor restrictions after scene signals and async updates."""
+        self.categories_dock_widget.update_change_enabled()
         if not hasattr(self, "_image_workspace_actions"):
             return
         if self.annotation_mode != "Frame":
@@ -2893,10 +2973,29 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             else "Run text-guided segmentation for the selected category."
         )
         is_zh = language == "zh"
+        finish_tip = (
+            "完成标注并立即保存当前图片。" if is_zh
+            else "Finish the annotation and immediately save the current image."
+        )
+        self.actionFinish.setToolTip(finish_tip)
+        self.actionFinish.setStatusTip(finish_tip)
         self.categories_dock_widget.pushButton_segment.setText("分割 (Segment)" if is_zh else "Segment")
         self.categories_dock_widget.pushButton_segment.setToolTip(
             "使用当前类别名直接进行文本分割。" if is_zh
             else "Segment the selected category with its category name."
+        )
+        self.categories_dock_widget.pushButton_change.setText("更改 (Change)" if is_zh else "Change")
+        self.categories_dock_widget.pushButton_change.setToolTip(
+            "将选中的轮廓改为当前类别。" if is_zh
+            else "Change the selected annotations to the chosen category."
+        )
+        self.categories_dock_widget.pushButton_segall.setToolTip(
+            "用当前类别名分割当前文件夹的全部图片，保留已有标注并自动保存。" if is_zh
+            else "Segment every image in the current folder with the selected category; keep existing annotations and save automatically."
+        )
+        self.categories_dock_widget.pushButton_segmiss.setToolTip(
+            "仅分割当前文件夹中尚无当前类别标注的图片，并自动保存。" if is_zh
+            else "Segment and save only images in the current folder with no annotation of the selected category."
         )
         self.text_prompt_dock_widget.checkBox_use_selected_category.setText(
             "跟随当前类别" if is_zh else "Use selected category"
@@ -2909,6 +3008,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             action.setText(chinese if is_zh else english)
 
         self.menuFile.setTitle("文件" if is_zh else "File")
+        self.file_image_heading.setText("图像 · Image" if is_zh else "Image")
+        self.file_video_heading.setText("视频 · Video" if is_zh else "Video")
+        self.file_general_heading.setText("通用" if is_zh else "General")
         self.menuNavigate.setTitle("导航" if is_zh else "Navigate")
         self.menuEdit.setTitle("帧标注" if is_zh else "Frame annotation")
         self.menuTemporal.setTitle("视频标注" if is_zh else "Video annotation")
@@ -2919,8 +3021,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.menuProjectLocations.setTitle(
             "项目位置" if is_zh else "Project locations"
         )
-        self.menuTemporalImport.setTitle("导入" if is_zh else "Import")
-        self.menuTemporalExport.setTitle("导出" if is_zh else "Export")
+        self.menuTemporalImport.setTitle("导入视频标注" if is_zh else "Import video annotations")
+        self.menuTemporalExport.setTitle("导出视频标注" if is_zh else "Export video annotations")
         self.menuDisplay.setTitle("显示" if is_zh else "Display")
         self.menuZoom.setTitle("缩放" if is_zh else "Zoom")
         self.menuCapture.setTitle("截图" if is_zh else "Capture")
@@ -2997,7 +3099,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.actionShow_video_workspace.setText(
             "Video（视频标注）" if is_zh else "Video"
         )
-        self.annotation_tools_button.setText("帧标注" if is_zh else "Frame annotate")
+        for action, chinese, english in (
+            (self.actionPolygon, "多边形", "Polygon"),
+            (self.actionSegment_anything_point, "SAM 点", "SAM point"),
+            (self.actionSegment_anything_box, "SAM 框", "SAM box"),
+            (self.actionRepaint, "重绘", "Repaint"),
+        ):
+            action.setIconText(chinese if is_zh else english)
         self.image_more_button.setText("帧工具" if is_zh else "Frame tools")
         self.project_tools_button.setText("项目" if is_zh else "Project")
         self.temporal_toolbar_label.setText("视频：" if is_zh else "Video:")
@@ -3051,12 +3159,33 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         hint = self.category_aliases.get(category)
         return "{} [{}]".format(category, hint) if hint is not None else category
 
+    def _read_config(self, path):
+        try:
+            return load_config(path)
+        except (OSError, ValueError) as error:
+            # Preserve damaged user data before any later save of defaults.
+            from IVAS.utils.persistence import atomic_write_bytes
+            source = Path(path)
+            backup = source.with_name(source.name + ".invalid-" + str(time.time_ns()))
+            try:
+                if source.is_file():
+                    atomic_write_bytes(backup, source.read_bytes())
+            except OSError:
+                raise error
+            QtWidgets.QMessageBox.warning(self, "Invalid configuration", "{}\nOriginal saved as {}".format(error, backup))
+            return {}
+
     def _reload_cfg_impl(self):
         # 软件配置
-        self.cfg = load_config(self.software_config_file)
+        self.cfg = self._read_config(self.software_config_file)
         if self.cfg is None:
             self.cfg = {}
-        software_cfg = self.cfg.get("software", {})
+        # Older releases also persisted categories here. They must never be
+        # used as a fallback for the active category file.
+        self.cfg.pop("label", None)
+        software_cfg = self.cfg.get("software") or {}
+        if not isinstance(software_cfg, dict):
+            software_cfg = {}
         self.cfg["software"] = software_cfg
 
         language = software_cfg.get("language", "en")
@@ -3153,8 +3282,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.cfg["software"]["video_output_root"] = configured_video_output
 
         # 类别
-        self.cfg.update(load_config(self.config_file) or {})
-        label_dict_list = self.cfg.get("label", [])
+        category_cfg = self._read_config(self.config_file)
+        label_dict_list = category_cfg.get("label") or []
+        if not isinstance(label_dict_list, list):
+            label_dict_list = []
+        label_dict_list = [label for label in label_dict_list if isinstance(label, dict)]
         if (
             len(label_dict_list) < 1
             or label_dict_list[0].get("name", "unknow") != "__background__"
@@ -3188,13 +3320,17 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         Arguments:
             default (bool): load default shortcut if True.
         """
-        shortcut_cfg = self.cfg["shortcut"]
+        shortcut_cfg = self.cfg.setdefault("shortcut", {})
+        if not isinstance(shortcut_cfg, dict):
+            return
         for action in shortcut_cfg:
 
-            default_key = shortcut_cfg[action]["default_key"]
+            if not isinstance(shortcut_cfg[action], dict):
+                continue
+            default_key = shortcut_cfg[action].get("default_key", shortcut_cfg[action].get("key"))
             if default:
                 shortcut_cfg[action]["key"] = default_key
-            key = shortcut_cfg[action]["key"]
+            key = shortcut_cfg[action].get("key", default_key)
             # Migrate IVAS's former single-key image-only default to the
             # conventional shortcut now shared by frame and video projects.
             if action == "actionSave" and key == "S":
@@ -3213,10 +3349,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self._suspended_bitmap_shortcut = qt_action.shortcut()
                 qt_action.setShortcut(QtGui.QKeySequence())
 
-    def set_saved_state(self, is_saved: bool):
+    def set_saved_state(self, is_saved: bool, *, save_now: bool = False):
+        """Update dirty state, optionally saving regardless of the auto-save setting."""
         self.saved = is_saved
         if not is_saved:
-            if self.cfg["software"]["auto_save"]:
+            if save_now or self.cfg["software"]["auto_save"]:
                 try:
                     self.save()
                 except Exception as error:
@@ -3285,6 +3422,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             QtWidgets.QMessageBox.warning(self, "Open frame failed", "The requested frame is missing.")
             return False
         selected_path = os.path.join(directory, selected_filename or files[0])
+        try:
+            Annotation(selected_path, os.path.join(label_directory or directory,
+                       os.path.splitext(os.path.basename(selected_path))[0] + ".json")).load_annotation()
+        except Exception as error:
+            QtWidgets.QMessageBox.warning(self, "Open annotation failed", str(error))
+            return False
         if not selected_path.lower().endswith(".dcm"):
             try:
                 with Image.open(selected_path) as candidate:
@@ -3302,8 +3445,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # Invalidate old requests without waiting for GPU work on the UI thread.
         if self.use_segment_anything:
             self.seganythread.invalidate()
-            if self.use_segment_anything_video:
-                self.segany_video.inference_state = {}
 
         self.files_list.clear()
         self.files_dock_widget.listWidget.clear()
@@ -3492,6 +3633,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.mode_tools_button.setText("Mode: {}".format(mode))
         self.mode_tools_button.setAccessibleName("Mode: {}".format(mode))
         self.modeState.setText("Mode: {}".format(mode))
+        self._adapt_frame_toolbar()
         # Embedded QWidgetActions otherwise shrink below their text width.
         # Let the toolbar overflow move secondary commands into its extension.
         for toolbar in (self.toolBar, self.toolBar_2):
@@ -3876,9 +4018,17 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.show_image(self.current_index)
 
     def save(self):
-        """Save annotations to disk."""
+        """Serialize frame saves with tracking commits in the same project."""
+        from IVAS.utils.persistence import project_write_lock
+        store = self.video_annotation_workspace.store if self._video_frame_belongs_to_active_project() else None
+        with project_write_lock(store.path) if store is not None else nullcontext():
+            return self._save_annotation()
+
+    def _save_annotation(self):
         if self.current_label is None:
             return
+        if not self.load_finished:
+            raise ValueError("Wait for the image and annotation to load before saving")
         self.current_label.objects.clear()
         for polygon in self.polygons:
             object = polygon.to_object()
@@ -3896,8 +4046,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 if not mark_saved(self.current_label.label_path):
                     self.saved = False
                     raise RuntimeError("Frame JSON was written, but its video project link could not be saved. Retry Save before leaving this frame.")
-        # 保存标注文件的同时保存一份 IVAS 类别配置
-        self.save_cfg(os.path.join(self.label_root, CATEGORY_CONFIG_NAME))
+        # Seed a new label directory once. Saving an annotation must not
+        # overwrite categories edited on disk, or shadow an existing isat.yaml.
+        if _find_category_config(self.label_root) is None:
+            self.save_cfg(os.path.join(self.label_root, CATEGORY_CONFIG_NAME))
         self.set_saved_state(True)
         self._loaded_frame_signature = self._frame_disk_signature()
 
@@ -3945,6 +4097,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     image_data = candidate.copy()
         except Exception as error:
             QtWidgets.QMessageBox.warning(self, "Open image failed", str(error))
+            return False
+        try:
+            loaded_annotation = Annotation(file_path, os.path.join(self.label_root,
+                                           os.path.splitext(os.path.basename(file_path))[0] + ".json")).load_annotation()
+        except Exception as error:
+            QtWidgets.QMessageBox.warning(self, "Open annotation failed", str(error))
             return False
         if not self._confirm_leave_unsaved_image():
             return False
@@ -4040,9 +4198,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 label_path = os.path.join(
                     self.label_root, ".".join(name.split(".")[:-1]) + ".json"
                 )
-                self.current_label = Annotation(file_path, label_path)
-                # 载入数据
-                self.current_label.load_annotation()
+                self.current_label = loaded_annotation
 
                 for object in self.current_label.objects:
                     try:
@@ -4084,7 +4240,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self._pin_video_annotation_frame()
 
         except Exception as e:
-            print(e)
+            self.load_finished = False
+            self.can_be_annotated = False
+            self.actionSave.setEnabled(False)
+            QtWidgets.QMessageBox.warning(self, "Open annotation failed", str(e))
         finally:
             if self.current_index > 0:
                 self.actionPrev_image.setEnabled(True)
@@ -4096,7 +4255,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             else:
                 self.actionNext_image.setEnabled(False)
 
-            self.plugin_manager_dialog.trigger_after_image_open()
+            if self.load_finished:
+                self.plugin_manager_dialog.trigger_after_image_open()
             self._update_tracking_action_safety()
 
     def prev_image(self):
@@ -4573,11 +4733,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def save_software_cfg(self):
         """
-        Save all config to disk.
+        Save application preferences without copying the active categories.
         """
         if self._loading_config:
             return
-        save_config(self.cfg, self.software_config_file)
+        cfg = {key: value for key, value in self.cfg.items() if key != "label"}
+        save_config(cfg, self.software_config_file)
 
     def open_docs(self):
         """Open the bundled IVAS documentation without relying on a stale URL."""
@@ -4605,37 +4766,74 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if self._shutdown_started:
             a0.accept()
             return
-        if not self._confirm_leave_unsaved_image():
-            a0.ignore()
-            return
-        mask_worker = self.scene._mask_worker
-        if mask_worker is not None and mask_worker.isRunning():
-            self.scene.invalidate_mask_prediction()
-            mask_worker.finished.connect(self.close)
-            self.statusbar.showMessage("正在结束分割任务，完成后关闭窗口。")
+        if not getattr(self, "_closing_requested", False) and not self._confirm_leave_unsaved_image():
             a0.ignore()
             return
         if self.video_annotation_workspace is not None:
             confirm_pending = getattr(
                 self.video_annotation_workspace, "confirm_discard_pending", None
             )
-            if confirm_pending is not None and not confirm_pending(self):
+            if (not getattr(self, "_closing_requested", False)
+                    and confirm_pending is not None and not confirm_pending(self)):
                 a0.ignore()
                 return
+        self._closing_requested = True
+        self._version_check_timer.stop()
+        self.scene.invalidate_mask_prediction()
+        self.text_prompt_dock_widget.invalidate_prediction()
+        self.visual_prompt_dock_widget.invalidate_prediction()
+        workers = self._running_workers()
+        if workers:
+            self.setEnabled(False)
+            for worker in workers:
+                worker.requestInterruption()
+                cancel = getattr(worker, "cancel", None)
+                if callable(cancel):
+                    cancel()
+                elif isinstance(cancel, bool):
+                    worker.cancel = True
+                if hasattr(worker, "pause"):
+                    worker.pause = True
+                event = getattr(worker, "cancel_event", None)
+                if event is not None:
+                    event.set()
+                if not getattr(worker, "_close_connected", False):
+                    worker._close_connected = True
+                    worker.finished.connect(self.close)
+            self.statusbar.showMessage("正在结束后台任务，完成后关闭窗口。")
+            a0.ignore()
+            return
+        if self.video_annotation_workspace is not None:
             if not self.video_annotation_workspace.shutdown():
                 a0.ignore()
                 return
-        self._shutdown_started = True
-        self._version_check_timer.stop()
-        version_thread = getattr(self, "check_latest_version_thread", None)
-        if version_thread is not None and version_thread.isRunning():
-            version_thread.requestInterruption()
-            version_thread.wait(3500)
         self._stop_gpu_monitor()
-        self.save_cfg(self.config_file)
-        self.save_software_cfg()
+        try:
+            self.save_software_cfg()
+        except Exception as error:
+            self._closing_requested = False
+            self.setEnabled(True)
+            QtWidgets.QMessageBox.warning(self, "Saving settings failed", str(error))
+            a0.ignore()
+            return
         self.plugin_manager_dialog.trigger_application_shutdown()
+        self._shutdown_started = True
         a0.accept()
+
+    def _running_workers(self):
+        """Include parentless jobs owned by scenes, docks and lazy tool dialogs."""
+        workers = set()
+        for owner in [self, self.scene, *self.findChildren(QtCore.QObject)]:
+            for value in vars(owner).values():
+                values = value.values() if isinstance(value, dict) else value if isinstance(value, (list, set, tuple)) else [value]
+                for candidate in values:
+                    if isinstance(candidate, QtCore.QThread):
+                        try:
+                            if candidate.isRunning():
+                                workers.add(candidate)
+                        except RuntimeError:
+                            pass
+        return workers
 
     def latest_version_tip(self, is_latest_version: bool, latest_version: str):
         """

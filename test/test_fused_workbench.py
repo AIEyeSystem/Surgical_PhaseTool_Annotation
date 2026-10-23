@@ -194,7 +194,7 @@ class FusedWorkbenchTests(unittest.TestCase):
         self.assertIs(window.temporal_dock.widget().widget(), workspace.editor_panel)
         self.assertIs(window.timeline_dock.widget(), workspace.timeline)
 
-    def test_file_project_and_mode_have_distinct_responsibilities(self):
+    def test_file_groups_media_and_project_keeps_location_shortcuts(self):
         window = self._window()
 
         file_actions = set(self._leaf_actions(window.menuFile))
@@ -209,7 +209,7 @@ class FusedWorkbenchTests(unittest.TestCase):
         for menu in self._public_menus(window):
             public_menu_actions.update(self._leaf_actions(menu))
         project_actions = set(self._leaf_actions(window.project_tools_button.menu()))
-        self.assertFalse(file_actions & project_actions)
+        self.assertTrue(project_actions.issubset(file_actions))
         self.assertIn(window.actionVideo_output_root, project_actions)
         for mode_action in (
             window.actionShow_image_workspace,
@@ -346,9 +346,9 @@ class FusedWorkbenchTests(unittest.TestCase):
         secondary_controls = [
             action for action in secondary_actions if not action.isSeparator()
         ]
-        # Separators and dropdown-backed controls keep this dense workflow
-        # readable without exposing the many temporal/tracking leaf commands.
-        self.assertLessEqual(len(primary_controls), 12)
+        # Four direct drawing tools replace the former annotation dropdown;
+        # advanced temporal/tracking commands remain grouped in menus.
+        self.assertLessEqual(len(primary_controls), 15)
         self.assertLessEqual(len(secondary_controls), 9)
         self.assertGreaterEqual(
             sum(action.isSeparator() for action in primary_actions),

@@ -109,6 +109,19 @@ QMenu::separator {{
     margin: 5px 8px;
 }}
 
+QMenu#menuFile::separator {{
+    background: transparent;
+    border-top: 1px dashed {border};
+    height: 1px;
+    margin: 6px 8px;
+}}
+
+QLabel#fileMenuHeading {{
+    color: {text-muted};
+    font-weight: 600;
+    padding: 5px 24px;
+}}
+
 QToolBar {{
     background: {surface-raised};
     border: 0;

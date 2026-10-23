@@ -4,6 +4,10 @@
 import os
 import shutil
 import time
+import re
+import hashlib
+from contextlib import closing
+from urllib.error import HTTPError
 from functools import partial
 from urllib import request
 
@@ -27,102 +31,107 @@ class DownloadThread(QThread):
     """
 
     tag = pyqtSignal(float, float)
+    failed = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super(DownloadThread, self).__init__(parent)
         self.urls = None
         self.name = None
         self.pause = False
+        self.sha256 = None
+        self.last_error = ""
 
         self.block_size = 4096
 
-    def setNameAndUrl(self, name, urls):
+    def setNameAndUrl(self, name, urls, sha256=None):
         self.urls = urls
         self.name = name
         self.pause = False
+        self.sha256 = sha256
+        self.last_error = ""
 
     def run(self):
-        if self.name is not None and self.urls is not None:
+        if not self.name or not self.urls:
+            return
+        try:
             tmp_root = os.path.join(CHECKPOINT_PATH, "tmp")
-            if not os.path.exists(tmp_root):
-                os.mkdir(tmp_root)
-
-            # 寻找最佳下载链接
-            print("Getting the best download url ...")
-            best_time = 1e8
-            best_url = self.urls[0]
+            os.makedirs(tmp_root, exist_ok=True)
+            temporary = os.path.join(tmp_root, os.path.basename(self.name))
+            errors = []
             for url in self.urls:
+                if self.pause or self.isInterruptionRequested():
+                    break
                 try:
-                    start_time = time.time()
-                    req = request.Request(url, headers={"Range": "bytes=0-10"})
-                    request.urlopen(req, timeout=3)
-                    cost_time = time.time() - start_time
-                except:
-                    cost_time = 1e8
-                if cost_time < best_time:
-                    best_time = cost_time
-                    best_url = url
-
-            print("Download {} from {}".format(self.name, best_url))
-            # 检查缓存
-            downloaded_size = 0
-            download_tmp = os.path.join(tmp_root, self.name)
-            if os.path.exists(download_tmp):
-                with open(download_tmp, "rb") as f:
-                    downloaded_size = len(f.read())
-
-            req = request.Request(best_url, headers={"Range": "bytes=0-"})
-            try:
-                response = request.urlopen(req, timeout=10)
-                total_size = int(response.headers["Content-Length"])
-            except Exception as e:
-                print("When download {} from {}, {}".format(self.name, best_url, e))
-                self.tag.emit(-1, -1)
-                return
-            # 存在缓存
-            if downloaded_size != 0:
-                # 判断缓存文件是否下载完
-                if downloaded_size > total_size:
-                    self.move_from_tmp(
-                        download_tmp, os.path.join(CHECKPOINT_PATH, self.name)
-                    )
-                    return
-                # 断点续传
-                content_range = response.headers.get("Content-Range", None)
-                if content_range is not None:
-                    req = request.Request(
-                        best_url, headers={"Range": "bytes={}-".format(downloaded_size)}
-                    )
-                    response = request.urlopen(req)
-                    content_range = response.headers.get("Content-Range", None)
-                    if content_range is not None:
-                        print("Resume downloading: ", content_range)
-                else:
-                    print("Not supprot resume download.")
-                    downloaded_size = 0
-
-            open_mode = "wb" if downloaded_size == 0 else "ab"
-            with open(download_tmp, open_mode) as f:
-                while True:
-                    if self.pause:
-                        self.tag.emit(-1, -1)
-                        return
-                    buffer = response.read(self.block_size)
-                    if not buffer:
+                    self._download(url, temporary)
+                    if self.pause or self.isInterruptionRequested():
                         break
-                    f.write(buffer)
-                    downloaded_size += len(buffer)
-                    self.tag.emit(downloaded_size, total_size)
-            # 下载完成
-            self.move_from_tmp(download_tmp, os.path.join(CHECKPOINT_PATH, self.name))
+                    if self.sha256:
+                        digest = hashlib.sha256()
+                        with open(temporary, "rb") as stream:
+                            for block in iter(lambda: stream.read(1024 * 1024), b""):
+                                digest.update(block)
+                        if digest.hexdigest().lower() != self.sha256.lower():
+                            os.unlink(temporary)
+                            raise ValueError("Checkpoint checksum does not match")
+                    self.move_from_tmp(temporary, os.path.join(CHECKPOINT_PATH, os.path.basename(self.name)))
+                    return
+                except Exception as error:
+                    errors.append(str(error))
+            if errors and not (self.pause or self.isInterruptionRequested()):
+                raise OSError("; ".join(errors))
+        except Exception as error:
+            self.last_error = str(error)
+            self.failed.emit(self.last_error)
+        self.tag.emit(-1, -1)
+
+    def _download(self, url, temporary):
+        offset = os.path.getsize(temporary) if os.path.exists(temporary) else 0
+        headers = {"Range": "bytes={}-".format(offset)} if offset else {}
+        try:
+            response = request.urlopen(request.Request(url, headers=headers), timeout=10)
+        except HTTPError as error:
+            if error.code != 416:
+                raise
+            error.close()
+            offset = 0
+            response = request.urlopen(request.Request(url), timeout=10)
+        with closing(response):
+            status = response.getcode()
+            content_length = int(response.headers.get("Content-Length", -1))
+            if content_length < 0:
+                raise ValueError("Download response is missing its length")
+            if status == 206:
+                match = re.fullmatch(r"bytes (\d+)-(\d+)/(\d+)", response.headers.get("Content-Range", ""))
+                if not match or int(match[1]) != offset or int(match[2]) - offset + 1 != content_length:
+                    raise ValueError("Invalid download range response")
+                total = int(match[3])
+                if int(match[2]) != total - 1:
+                    raise ValueError("Incomplete download range")
+            elif status == 200:
+                offset, total = 0, content_length
+            else:
+                raise ValueError("Unexpected download HTTP status {}".format(status))
+            received = 0
+            with open(temporary, "ab" if offset else "wb") as stream:
+                while not (self.pause or self.isInterruptionRequested()):
+                    block = response.read(self.block_size)
+                    if not block:
+                        break
+                    stream.write(block)
+                    received += len(block)
+                    if received > content_length:
+                        raise ValueError("Download body exceeds declared length")
+                    self.tag.emit(offset + received, total)
+                stream.flush()
+                os.fsync(stream.fileno())
+            if self.pause or self.isInterruptionRequested():
+                return
+            if received != content_length or os.path.getsize(temporary) != total or total <= 0:
+                raise ValueError("Checkpoint download is incomplete")
 
     def move_from_tmp(self, from_path, to_path):
-        try:
-            shutil.move(from_path, to_path)
-            self.tag.emit(-2, -2)
-
-        except Exception as e:
-            print("Error when move {} to {}, {}".format(from_path, to_path, e))
+        os.replace(from_path, to_path)
+        self.tag.emit(-2, -2)
 
 
 class ModelManagerDialog(ResponsiveDialog, Ui_Dialog):
@@ -353,9 +362,10 @@ class ModelManagerDialog(ResponsiveDialog, Ui_Dialog):
             download_thread = self.download_thread_dict[model_name]
         else:
             download_thread = DownloadThread(self)
+            download_thread.failed.connect(lambda message: self.mainwindow.statusbar.showMessage(message, 10000))
             self.download_thread_dict[model_name] = download_thread
 
-        download_thread.setNameAndUrl(model_name, urls)
+        download_thread.setNameAndUrl(model_name, urls, model_dict.get(model_name, {}).get("sha256"))
         download_thread.tag.connect(partial(self.download_process, button, model_name))
         download_thread.start()
 
@@ -417,7 +427,10 @@ class ModelManagerDialog(ResponsiveDialog, Ui_Dialog):
 
     def clear_tmp(self):
         remove_list = []
-        for name in os.listdir(os.path.join(CHECKPOINT_PATH, "tmp")):
+        temporary_root = os.path.join(CHECKPOINT_PATH, "tmp")
+        if not os.path.isdir(temporary_root):
+            return
+        for name in os.listdir(temporary_root):
             tmp_file = os.path.join(CHECKPOINT_PATH, "tmp", name)
             if name in self.download_thread_dict:
                 thread = self.download_thread_dict.get(name, None)

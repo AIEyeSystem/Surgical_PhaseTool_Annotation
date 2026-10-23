@@ -25,7 +25,7 @@ IVAS 将手术视频的时间标注和单帧器械分割整合到同一个桌面
 
 ![视频阶段与动作标注界面](docs/images/video-phases.png)
 
-- **顶部 Mode / 项目**：切换 Video 与 Frame，管理项目输出目录；通过“文件”打开视频或已有视频项目。
+- **顶部 Mode / 项目**：切换 Video 与 Frame，管理项目输出目录。“文件”菜单按 **Image / Video / 通用** 分组，以虚线分隔：图像目录与帧标签目录放在 Image，视频、已有视频项目、项目输出目录、媒体重新关联及视频标注导入导出放在 Video；保存当前工作、设置与退出放在通用组。
 - **视频标注工具栏**：选择 `Phase` 或 `Task` 和标签，在播放位置记录区间开始与结束。视频控件获得焦点时可用 `I` 开始、`O` 结束。
 - **中央预览与底部播放条**：播放 / 暂停、前后逐帧定位、调整速度；时间码用于精确查看标注边界。
 - **底部双轨时间轴**：上轨显示 Phase，下轨显示 Task；支持缩放、平移和选择已有区间，便于检查阶段覆盖与动作重叠。
@@ -36,11 +36,14 @@ IVAS 将手术视频的时间标注和单帧器械分割整合到同一个桌面
 ![当前视频帧的器械分割界面](docs/images/frame-segmentation.png)
 
 - **进入帧标注**：点击“标注当前视频帧”或选择 `Mode → Frame`，提取播放位置对应帧，进入图像画布；编辑时播放位置固定。
+- **常用标注工具栏**：直接点击 **多边形、SAM 点、SAM 框、重绘**；默认快捷键中，多边形为 `C`，SAM 点为 `Q`，SAM 框为 `W`。较宽窗口显示图标和名称，窄窗口显示图标并保留悬停提示；SAM 工具在模型和当前图像编码就绪后可用。
 - **中央分割画布**：绘制多边形、调整轮廓和顶点，也可加载模型后使用点 / 框等提示辅助分割。图中浅色轮廓为演示器械的人工标注。
-- **右侧类别 / 标注 / 文件列表**：查找并选择器械或组织类别，管理当前帧的对象、实例分组和图层；类别可按任务自定义。
-- **保存与返回**：按 `Ctrl+S` 保存帧 JSON，点击“返回视频”继续阶段标注。未完成的 Phase / Task 区间会保留，帧标签与时序标注各自保存。
+- **右侧类别 / 标注 / 文件列表**：查找并选择器械或组织类别，管理当前帧的对象、实例分组和图层；类别可按任务自定义。面板宽度会根据窗口大小、显示缩放和中英文控件所需空间自动调整，避免按钮被挤窄。
+- **保存与返回**：点击对勾 `Finish`（或按 `E`）完成标注后立即保存当前帧 JSON，无需开启全局自动保存；其他修改可按 `Ctrl+S` 保存。点击“返回视频”继续阶段标注。未完成的 Phase / Task 区间会保留，帧标签与时序标注各自保存。
 
 语义和实例显示用于检查结果；编辑轮廓时需要回到标签显示。
+
+不同分辨率下，右侧工具面板会为画布保留空间；窗口很小或字体较大时，可通过面板滚动条访问完整内容。顶部面板标签过多时，用左右箭头切换。拖动画布与面板之间的分隔线可手动调整宽度；窗口尺寸或面板内容变化后会重新适配。浮动面板保留独立尺寸，`视图 → 重置布局` 可恢复默认停靠布局。
 
 ### 3. 视频追踪结果审核
 
@@ -72,7 +75,7 @@ IVAS 将手术视频的时间标注和单帧器械分割整合到同一个桌面
 
 ## 安装与启动
 
-建议使用 **Python 3.11** 和独立环境。当前 Windows 开发环境使用 Python 3.11；模型推理还需要与本机驱动匹配的 PyTorch，显存需求以所选模型为准。
+需要 **Python 3.10 或更高版本**，建议使用 Python 3.11 和独立环境。当前 Windows 开发环境使用 Python 3.11；模型推理还需要与本机驱动匹配的 PyTorch，显存需求以所选模型为准。
 
 ```powershell
 git clone https://github.com/AIEyeSystem/Surgical_PhaseTool_Annotation.git
@@ -84,6 +87,8 @@ python -m venv .venv
 ```
 
 也可在激活环境后使用 `ivas` 或 `ivas-sam` 启动。Linux / macOS 的虚拟环境解释器为 `.venv/bin/python`；桌面运行需要图形环境。
+
+源码目录和可写便携目录沿用 `IVAS/` 内的配置与模型目录。安装到 `site-packages` 或程序目录只读时，配置和下载权重使用用户数据目录（Windows 为 `%LOCALAPPDATA%/IVAS`，其他系统为 `$XDG_DATA_HOME/IVAS` 或 `~/.local/share/IVAS`）。可通过 `IVAS_DATA_DIR` 指定位置；首次加载会读取随程序附带的默认配置，保存时再创建用户文件。
 
 视频默认使用 Qt Multimedia。遇到 Qt 无法解码的视频，可安装与 Python 位数一致的 VLC 桌面运行库，程序会尝试 VLC 后端；仅安装 `python-vlc` 并不包含 VLC 原生运行库。
 
@@ -119,25 +124,40 @@ python -m venv .venv
 | 视频控件获得焦点 | `I` / `O` | 记录区间开始 / 结束 |
 | 视频控件获得焦点 | `Ctrl+Z` / `Ctrl+Shift+Z` | 撤销 / 重做时序标注操作 |
 | 图像画布 | `C`、`Q`、`W` | 手工多边形、SAM 点提示、SAM 框提示 |
-| 图像画布 | `E` / `Esc` | 完成 / 取消绘制 |
+| 图像画布 | `E` / `Esc` | 完成并保存 / 取消绘制 |
 | 图像画布 | `A` / `D`、`F` | 上一张 / 下一张、适应窗口 |
 
-快捷键可在设置中调整；Frame 与 Video 按当前编辑区域分配按键。旧版 `project.ivat.json`、`ivat.yaml` 和 `ivat.plugins` 入口仍兼容；新文件使用 IVAS 命名。
+快捷键可在设置中调整；Frame 与 Video 按当前编辑区域分配按键。原版 ISAT 标注 JSON 和 `isat.yaml`、旧版 `project.ivat.json`、`ivat.yaml` 和 `ivat.plugins` 入口仍兼容；新文件使用 IVAS 命名。原版标注无需手动修改 `info.description`。
+
+类别名称以当前类别配置为准，优先读取 `ivas.yaml`。同目录的 `ivas_rename.yaml` 只提供显示别名：类别数量、完整的 ID / 名称映射（无 ID 时按顺序）及双方提供的颜色必须匹配。任何一项不匹配、缺项、重复 ID 或无效内容都会使整份 rename 文件被忽略，所有类别恢复为原名称和类别 ID；不会部分套用别名，也不会修改这两个配置文件。
+
+`ivas.yaml` 保存类别与颜色，`software.yaml` 保存语言、快捷键、模型精度等应用设置。旧版 `software.yaml` 中的 `label` 会被忽略，并在下次保存应用设置时移除。保存标注、修改应用设置和退出程序都不会覆盖已有的类别文件；只有在类别设置中点击“应用”或主动导出时才写入类别，首次保存到没有类别配置的新标签目录时会创建一份副本。在外部编辑类别 YAML 后，重新导入配置或重启程序即可加载修改。
+
+选中画布轮廓或 Annos 条目时，Categories 会同步显示对应类别。要修改已有 mask，先选中轮廓，再在 Categories 选择目标类别，点击与 Segment 同行的 **Change**。轮廓颜色、Annos 名称和标注对象同步更新，几何形状、实例编号与追踪 ID 保留；按 `Ctrl+S` 保存，开启自动保存时会立即保存。支持一次修改多个选中轮廓。
+
+加载 SAM3 / SAM3.1 后，在 Frame 模式选择一个前景类别，Categories 中 **Segment / Change** 的下一行提供文件夹批量分割：
+
+- **SegAll**：用当前类别名作为 prompt，逐张分割当前打开文件夹的全部图片。
+- **SegMiss**：只处理已有标注中没有当前类别的图片；没有 JSON、空标注或只有其他类别的图片都会处理，已有该类别的图片跳过。判断使用原始类别名，不受中文显示别名影响。
+
+批量操作会先保存当前图片尚未保存的修改，再将新轮廓追加到各图片在当前标签目录中的 JSON；已有标注保留，新轮廓标记为 SAM 草稿。重复执行 SegAll 会再次追加结果，补漏时可用 SegMiss。进度窗口支持取消：已保存的图片保留，正在推理但尚未保存的结果丢弃；个别图片或标签出错时继续处理后续图片，并在结束后显示错误汇总。无检测结果的图片不会标记为“已有该类别”，以后仍可参与 SegMiss。处理范围是当前文件列表，不递归子目录；视频项目中仅处理已提取到当前帧目录的图片。
 
 ## Windows 便携版构建
 
-当前构建脚本使用 Conda 前缀式 `.venv/python.exe`。与上面的标准 venv 启动方式不同，打包需要单独准备该环境；脚本在缺少环境时会尝试克隆本机已有的 `labeling` Conda 环境，再补齐 `requirements-portable.txt` 及构建依赖。
+双击 `build_exe.bat` 即可构建，或在 PowerShell 中运行以下命令。脚本自动识别标准 venv 的 `.venv/Scripts/python.exe` 和 Conda 前缀的 `.venv/python.exe`；也可用 `-PythonExe` 指定已有环境。没有本地环境时会尝试克隆本机 `labeling` Conda 环境。依赖已满足时不再访问网络，否则安装缺失的运行和打包依赖。
 
 ```powershell
-# 需要本机已有 labeling Conda 环境，并使用 Conda 前缀式 .venv
-conda create --prefix .\.venv --clone labeling --copy --yes
-.\build_portable_exe.ps1 -SkipCheckpoint
+# 只打包程序及运行库，不内置模型权重
+.\build_exe.bat -SkipCheckpoint
 
 # 若要打包 SAM3.1，将 sam3.1_multiplex_bf16.pt 放在项目根目录后执行
-.\build_portable_exe.ps1
+.\build_exe.bat
+
+# 指定环境，并跳过依赖安装（需要事先装齐依赖）
+.\build_exe.bat -PythonExe .\.venv\Scripts\python.exe -SkipDependencyInstall -SkipCheckpoint
 ```
 
-如果已按源码启动步骤建立标准 venv，请在另一份检出目录准备打包环境。输出为 `build/IVAS/IVAS.exe`；分发时需要整个 `build/IVAS/` 文件夹及其 `_internal/` 内容。也可双击 `build_exe.bat` 调用构建脚本。
+构建成功后直接运行 **`build/IVAS/IVAS.exe`**。分发时需要整个 `build/IVAS/` 文件夹及其 `_internal/` 内容。新版本在临时目录完成打包及启动验证后才替换发布目录；上一版保存在 `build/IVAS.previous-时间戳/`。构建日志在 `tmp/portable-build.log`，启动与模型推理验证结果在成品目录的 `SMOKE_TEST.log`。
 
 ## 开发与仓库内容
 

@@ -40,7 +40,10 @@ class PluginManagerDialog(ResponsiveDialog, Ui_Dialog):
     def load_plugins(self):
         self.tableWidget.setRowCount(0)
         for plugin in self.plugins:
-            plugin.disable_plugin()
+            try:
+                plugin.disable_plugin()
+            except Exception as error:
+                self._report_plugin_error(plugin, "disable_plugin", error)
         self.plugins = []
 
         print("loading IVAS plugins")
@@ -110,72 +113,60 @@ class PluginManagerDialog(ResponsiveDialog, Ui_Dialog):
 
             row += 1
 
+    def _report_plugin_error(self, plugin, event, error):
+        message = "Plugin {} / {}: {}".format(type(plugin).__name__, event, error)
+        print(message)
+        self.mainwindow.statusbar.showMessage(message, 10000)
+
+    def _dispatch(self, event, *args, critical=False):
+        for plugin in tuple(self.plugins):
+            if not getattr(plugin, "enabled", False):
+                continue
+            try:
+                getattr(plugin, event)(*args)
+            except Exception as error:
+                self._report_plugin_error(plugin, event, error)
+                if critical:
+                    raise RuntimeError("Plugin rejected annotation save: {}".format(error)) from error
+
     def trigger_before_image_open(self, image_path):
-        for plugin in self.plugins:
-            if plugin.enabled:
-                plugin.before_image_open_event(image_path)
+        self._dispatch("before_image_open_event", image_path)
 
     def trigger_after_image_open(self):
-        for plugin in self.plugins:
-            if plugin.enabled:
-                plugin.after_image_open_event()
+        self._dispatch("after_image_open_event")
 
     def trigger_before_annotation_start(self):
-        for plugin in self.plugins:
-            if plugin.enabled:
-                plugin.before_annotation_start_event()
+        self._dispatch("before_annotation_start_event")
 
     def trigger_after_annotation_created(self):
-        for plugin in self.plugins:
-            if plugin.enabled:
-                plugin.after_annotation_created_event()
+        self._dispatch("after_annotation_created_event")
 
     def trigger_after_annotation_changed(self):
-        for plugin in self.plugins:
-            if plugin.enabled:
-                plugin.after_annotation_changed_event()
+        self._dispatch("after_annotation_changed_event")
 
     def trigger_before_annotations_save(self):
-        for plugin in self.plugins:
-            if plugin.enabled:
-                plugin.before_annotations_save_event()
+        self._dispatch("before_annotations_save_event", critical=True)
 
     def trigger_after_annotations_saved(self):
-        for plugin in self.plugins:
-            if plugin.enabled:
-                plugin.after_annotations_saved_event()
+        self._dispatch("after_annotations_saved_event")
 
     def trigger_after_sam_encode_finished(self, index: int):
-        for plugin in self.plugins:
-            if plugin.enabled:
-                plugin.after_sam_encode_finished_event(index)
+        self._dispatch("after_sam_encode_finished_event", index)
 
     def trigger_on_mouse_move(self, scene_pos: QtCore.QPointF):
-        for plugin in self.plugins:
-            if plugin.enabled:
-                plugin.on_mouse_move_event(scene_pos)
+        self._dispatch("on_mouse_move_event", scene_pos)
 
     def trigger_on_mouse_release(self, scene_pos: QtCore.QPointF):
-        for plugin in self.plugins:
-            if plugin.enabled:
-                plugin.on_mouse_release_event(scene_pos)
+        self._dispatch("on_mouse_release_event", scene_pos)
 
     def trigger_on_mouse_press(self, scene_pos: QtCore.QPointF):
-        for plugin in self.plugins:
-            if plugin.enabled:
-                plugin.on_mouse_press_event(scene_pos)
+        self._dispatch("on_mouse_press_event", scene_pos)
 
     def trigger_on_mouse_pressed_and_mouse_move(self, scene_pos: QtCore.QPointF):
-        for plugin in self.plugins:
-            if plugin.enabled:
-                plugin.on_mouse_pressed_and_mouse_move_event(scene_pos)
+        self._dispatch("on_mouse_pressed_and_mouse_move_event", scene_pos)
 
     def trigger_application_start(self):
-        for plugin in self.plugins:
-            if plugin.enabled:
-                plugin.application_start_event()
+        self._dispatch("application_start_event")
 
     def trigger_application_shutdown(self):
-        for plugin in self.plugins:
-            if plugin.enabled:
-                plugin.application_shutdown_event()
+        self._dispatch("application_shutdown_event")

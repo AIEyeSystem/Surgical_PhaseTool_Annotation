@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import bisect
 import json
+import math
 import os
 import tempfile
 from dataclasses import dataclass
@@ -133,6 +134,7 @@ def scan_frame_timestamps(
         fallback_step = 1000.0 / fps if fps > 0 else 40.0
         timestamps: List[int] = []
         fallback_used = False
+        origin = None
         while True:
             if cancel_event is not None and cancel_event.is_set():
                 raise OperationCancelled("Video timestamp scan was cancelled")
@@ -141,19 +143,18 @@ def scan_frame_timestamps(
                 break
             index = len(timestamps)
             raw_ms = float(capture.get(cv2.CAP_PROP_POS_MSEC) or 0.0)
-            candidate = max(0, int(round(raw_ms)))
+            if not math.isfinite(raw_ms):
+                raw_ms = 0.0 if origin is None else origin
+                fallback_used = True
+            if origin is None:
+                origin = raw_ms
+            candidate = max(0, int(round(raw_ms - origin)))
             if index and candidate <= timestamps[-1]:
                 candidate = max(
                     timestamps[-1] + 1,
-                    int(round(index * fallback_step)),
+                    int(round(timestamps[-1] + fallback_step)),
                 )
                 fallback_used = True
-            elif index == 0 and candidate != 0:
-                # Preserve the first non-zero stream timestamp while keeping
-                # relative seeking intuitive.
-                origin = candidate
-                candidate = 0
-                fallback_used = origin < 0
             timestamps.append(candidate)
             if progress is not None and (index % 16 == 0 or index + 1 == total):
                 progress(index + 1, total)
