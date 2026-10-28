@@ -49,6 +49,9 @@ class MainWindowShellTests(unittest.TestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
         window = mainwindow_module.MainWindow()
+        # Never write the user's IVAS/software.yaml or category file from tests.
+        window.save_cfg = mock.Mock()
+        window.save_software_cfg = mock.Mock()
 
         def cleanup_window():
             window._version_check_timer.stop()
@@ -68,11 +71,11 @@ class MainWindowShellTests(unittest.TestCase):
         self.assertIsNone(window.video_annotation_workspace)
         self.assertLessEqual(
             len([action for action in window.toolBar.actions() if not action.isSeparator()]),
-            15,
+            18,
         )
         self.assertLessEqual(
             len([action for action in window.toolBar_2.actions() if not action.isSeparator()]),
-            9,
+            8,
         )
         self.assertTrue(window.workspace_tools_button.accessibleName())
         self.assertIs(window.workspace_tools_button, window.mode_tools_button)

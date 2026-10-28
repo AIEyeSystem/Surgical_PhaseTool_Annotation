@@ -10,7 +10,7 @@ from PIL import Image
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 from IVAS.configs import CONTOURMode, CONTOURMethod, DRAWMode, MAPMode, STATUSMode
-from IVAS.widgets.polygon import Line, OBB, Polygon, PolygonVertex, PromptPoint, PromptRect
+from IVAS.widgets.polygon import BBox, Line, OBB, Polygon, PolygonVertex, PromptPoint, PromptRect
 from IVAS.widgets.mask_prediction import MaskPredictionWorker
 
 
@@ -76,6 +76,11 @@ class AnnotationScene(QtWidgets.QGraphicsScene):
         self.prompt_visual_current_label: bool = True # 当前正在绘制的矩形类型
         self.prompt_visual_items = []   # 存储已添加的矩形item
         self.prompt_visual_labels = []  # 存储已添加的矩形类型
+        # visual prompt points: exemplar clicks and the polarity of left clicks
+        self.prompt_visual_point_positions = []  # [[x, y], ...] in image pixels
+        self.prompt_visual_point_labels = []  # [bool, ...] True = positive
+        self.prompt_visual_point_items = []  # canvas markers
+        self.prompt_visual_point_label: bool = True
 
         # repaint line item
         self.repaint_line_item: Line = None
@@ -107,6 +112,9 @@ class AnnotationScene(QtWidgets.QGraphicsScene):
         self.repaint_start_vertex: PolygonVertex = None
         self.repaint_end_vertex: PolygonVertex = None
         self.hovered_vertex: PolygonVertex = None
+
+        # Press position of a bbox anchor; a drag from it completes the box.
+        self._bbox_drag_origin = None
 
     def load_image(self, image_path: str, image=None):
         """
@@ -196,16 +204,9 @@ class AnnotationScene(QtWidgets.QGraphicsScene):
         self.mainwindow.annos_dock_widget.setEnabled(False)
         self.mainwindow.actionRepaint.setEnabled(False)
 
-        self.mainwindow.modeState.setText("C")
+        self.mainwindow.set_canvas_state("create")
         self.mainwindow.modeState.setStatusTip(
             QtCore.QCoreApplication.translate("MainWindow", "Create mode.")
-        )
-        self.mainwindow.modeState.setStyleSheet(
-            """
-            background-color: #6CAB74;
-            border-radius : 5px; 
-            color: white;
-        """
         )
 
     def change_mode_to_view(self):
@@ -238,16 +239,9 @@ class AnnotationScene(QtWidgets.QGraphicsScene):
         self.mainwindow.annos_dock_widget.setEnabled(True)
         self.mainwindow._apply_frame_action_constraints()
 
-        self.mainwindow.modeState.setText("V")
+        self.mainwindow.set_canvas_state("view")
         self.mainwindow.modeState.setStatusTip(
             QtCore.QCoreApplication.translate("MainWindow", "View mode.")
-        )
-        self.mainwindow.modeState.setStyleSheet(
-            """
-            background-color: #70AEFF;
-            border-radius : 5px; 
-            color: white;
-        """
         )
 
     def change_mode_to_edit(self):
@@ -281,16 +275,9 @@ class AnnotationScene(QtWidgets.QGraphicsScene):
         self.mainwindow.actionVisible.setEnabled(True)
         self.mainwindow.actionRepaint.setEnabled(False)
 
-        self.mainwindow.modeState.setText("E")
+        self.mainwindow.set_canvas_state("edit")
         self.mainwindow.modeState.setStatusTip(
             QtCore.QCoreApplication.translate("MainWindow", "Edit mode.")
-        )
-        self.mainwindow.modeState.setStyleSheet(
-            """
-            background-color: #51C0CF;
-            border-radius : 5px; 
-            color: white;
-        """
         )
 
     def change_mode_to_repaint(self):
@@ -330,16 +317,9 @@ class AnnotationScene(QtWidgets.QGraphicsScene):
         self.mainwindow.actionVisible.setEnabled(False)
         self.mainwindow.actionRepaint.setEnabled(False)
 
-        self.mainwindow.modeState.setText("R")
+        self.mainwindow.set_canvas_state("repaint")
         self.mainwindow.modeState.setStatusTip(
             QtCore.QCoreApplication.translate("MainWindow", "Repaint mode.")
-        )
-        self.mainwindow.modeState.setStyleSheet(
-            """
-            background-color: #CF84CF;
-            border-radius : 5px; 
-            color: white;
-        """
         )
 
     def change_contour_mode_to_save_all(self):
@@ -414,6 +394,47 @@ class AnnotationScene(QtWidgets.QGraphicsScene):
         self.draw_mode = DRAWMode.SEGMENTANYTHING_VISUAL
         self.start_draw()
 
+    def start_segment_anything_visual_point(self, positive: bool = True):
+        """Click exemplar points for the visual prompt.
+
+        Left click adds a point with the chosen polarity, right click the
+        opposite one. The session stays open for several clicks; Predict or
+        Clear in the Visual prompt dock, Esc or Backspace manage it.
+        """
+        if not self._frame_is_editable() or not (
+            self.mode == STATUSMode.VIEW or
+            (self.mode == STATUSMode.CREATE and self.draw_mode == DRAWMode.SEGMENTANYTHING_VISUAL)
+        ):
+            return
+        if self.prompt_visual_current_item is not None:
+            # Switching from an unfinished box to points drops that box.
+            try:
+                self.prompt_visual_current_item.delete()
+                self.removeItem(self.prompt_visual_current_item)
+            finally:
+                self.prompt_visual_current_item = None
+        self.prompt_visual_point_label = bool(positive)
+        if self.mode == STATUSMode.CREATE:
+            return
+        self.draw_mode = DRAWMode.SEGMENTANYTHING_VISUAL
+        self.start_draw()
+
+    def _add_visual_point(self, pos, positive: bool):
+        """Record an exemplar click with a zoom-independent green/red marker."""
+        color = QtGui.QColor("#00ff00" if positive else "#ff0000")
+        item = PromptPoint(pos, 1 if positive else 0)
+        path = QtGui.QPainterPath()
+        path.addEllipse(QtCore.QRectF(-5, -5, 10, 10))
+        item.setPath(path)
+        item.setBrush(color)
+        item.setPen(QtGui.QPen(QtGui.QColor("#ffffff"), 1.5))
+        item.setFlag(QtWidgets.QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations, True)
+        item.setToolTip("+" if positive else "-")
+        self.addItem(item)
+        self.prompt_visual_point_positions.append([pos.x(), pos.y()])
+        self.prompt_visual_point_labels.append(bool(positive))
+        self.prompt_visual_point_items.append(item)
+
     def start_draw_polygon(self):
         """Start drawing polygon."""
         if not self._can_start_draw():
@@ -426,6 +447,13 @@ class AnnotationScene(QtWidgets.QGraphicsScene):
         if not self._can_start_draw():
             return
         self.draw_mode = DRAWMode.OBB
+        self.start_draw()
+
+    def start_draw_bbox(self):
+        """Start drawing an axis-aligned bounding box."""
+        if not self._can_start_draw():
+            return
+        self.draw_mode = DRAWMode.BBOX
         self.start_draw()
 
     def _frame_is_editable(self):
@@ -454,9 +482,13 @@ class AnnotationScene(QtWidgets.QGraphicsScene):
         if self.mode == STATUSMode.CREATE and self.draw_mode in (
             DRAWMode.POLYGON,
             DRAWMode.OBB,
+            DRAWMode.BBOX,
         ):
+            self._bbox_drag_origin = None
             if self.draw_mode == DRAWMode.OBB:
                 self.current_graph = OBB()
+            elif self.draw_mode == DRAWMode.BBOX:
+                self.current_graph = BBox()
             else:
                 self.current_graph = Polygon()
             self.current_graph.hover_alpha = int(
@@ -668,6 +700,38 @@ class AnnotationScene(QtWidgets.QGraphicsScene):
             self.mainwindow.polygons.append(graph)
             self.mainwindow.annos_dock_widget.listwidget_add_polygon(graph, notify=False)
 
+        elif self.draw_mode == DRAWMode.BBOX:
+            graph = self.current_graph
+            self._bbox_drag_origin = None
+            if graph is None or graph.is_drawing:
+                # Only an anchor exists; there is no box to keep.
+                if graph is not None:
+                    graph.delete()
+                    self.removeItem(graph)
+                    self.current_graph = None
+                self.change_mode_to_view()
+                if self.mainwindow.cfg["software"]["create_mode_invisible_polygon"]:
+                    self.mainwindow.set_labels_visible(True)
+                return
+
+            graph.set_drawed(
+                category,
+                group,
+                is_crowd,
+                note,
+                QtGui.QColor(
+                    self.mainwindow.category_color_dict.get(category, "#6F737A")
+                ),
+                len(self.mainwindow.polygons) + 1,
+            )
+            if self.mainwindow.group_select_mode == "auto":
+                self.mainwindow.current_group += 1
+                self.mainwindow.categories_dock_widget.lineEdit_currentGroup.setText(
+                    str(self.mainwindow.current_group)
+                )
+            self.mainwindow.polygons.append(graph)
+            self.mainwindow.annos_dock_widget.listwidget_add_polygon(graph, notify=False)
+
         # 选择类别
         # self.mainwindow.category_choice_widget.load_cfg()
         # self.mainwindow.category_choice_widget.show()
@@ -721,6 +785,14 @@ class AnnotationScene(QtWidgets.QGraphicsScene):
                 del prompt_visual_item
         self.prompt_visual_items.clear()
         self.prompt_visual_labels.clear()
+        for prompt_visual_point_item in self.prompt_visual_point_items:
+            try:
+                self.removeItem(prompt_visual_point_item)
+            except RuntimeError:
+                pass  # already destroyed by QGraphicsScene.clear()
+        self.prompt_visual_point_items.clear()
+        self.prompt_visual_point_positions.clear()
+        self.prompt_visual_point_labels.clear()
         self.mask = None
 
     def cancel_draw(self):
@@ -753,7 +825,7 @@ class AnnotationScene(QtWidgets.QGraphicsScene):
             return
         rotated = False
         for item in self.selectedItems():
-            if isinstance(item, OBB):
+            if isinstance(item, OBB) and not isinstance(item, BBox):
                 item.rotate(delta_angle)
                 rotated = True
         if rotated:
@@ -861,10 +933,7 @@ class AnnotationScene(QtWidgets.QGraphicsScene):
             if isinstance(item, (Polygon, OBB)):
                 index = self.mainwindow.polygons.index(item)
                 if self.current_graph is None:
-                    if isinstance(item, OBB):
-                        self.current_graph = OBB()
-                    else:
-                        self.current_graph = Polygon()
+                    self.current_graph = type(item)()
                     self.addItem(self.current_graph)
 
                 self.current_graph.hover_alpha = int(
@@ -1049,7 +1118,9 @@ class AnnotationScene(QtWidgets.QGraphicsScene):
                         self.finish_draw()
 
                 elif self.draw_mode == DRAWMode.SEGMENTANYTHING_VISUAL:
-                    if len(self.prompt_visual_current_item.points) < 1:
+                    if self.prompt_visual_current_item is None:
+                        self._add_visual_point(pos, self.prompt_visual_point_label)
+                    elif len(self.prompt_visual_current_item.points) < 1:
                         self.prompt_visual_current_item.addPoint(pos)
                         self.prompt_visual_current_item.addPoint(pos)
                     else:
@@ -1087,6 +1158,15 @@ class AnnotationScene(QtWidgets.QGraphicsScene):
                             pos = point
                         self.current_graph.addPoint(pos)
                         self.current_graph._add_trailing(pos)  # trailing point (no auto-complete)
+                elif self.draw_mode == DRAWMode.BBOX:
+                    graph = self.current_graph
+                    if not graph.points:
+                        graph.addPoint(QtCore.QPointF(pos))
+                        graph.addPoint(QtCore.QPointF(pos))  # trailing corner
+                        self._bbox_drag_origin = QtCore.QPointF(pos)
+                    else:
+                        self._bbox_drag_origin = None
+                        self._complete_bbox(pos)
                 else:
                     raise ValueError(
                         "The draw mode named {} not supported.".format(
@@ -1106,13 +1186,16 @@ class AnnotationScene(QtWidgets.QGraphicsScene):
 
                 elif self.draw_mode == DRAWMode.POLYGON:
                     pass
-                elif self.draw_mode == DRAWMode.OBB:
+                elif self.draw_mode in (DRAWMode.OBB, DRAWMode.BBOX):
                     pass
                 elif self.draw_mode == DRAWMode.SEGMENTANYTHING_BOX:
                     try:
                         self.finish_draw()
                     except Exception:
                         pass
+                elif self.draw_mode == DRAWMode.SEGMENTANYTHING_VISUAL:
+                    if self.prompt_visual_current_item is None:
+                        self._add_visual_point(pos, not self.prompt_visual_point_label)
                 else:
                     raise ValueError(
                         "The draw mode named {} not supported.".format(
@@ -1129,7 +1212,17 @@ class AnnotationScene(QtWidgets.QGraphicsScene):
 
             if self.repaint_start_vertex is None:
                 # 开始repaint
-                if self.hovered_vertex is not None:
+                if self.hovered_vertex is not None and isinstance(
+                    self.hovered_vertex.parent_shape, OBB
+                ):
+                    # Boxes keep their rectangle constraint; edit corners instead.
+                    self.mainwindow.statusbar.showMessage(
+                        "矩形框 / 旋转框请拖动角点编辑，不能重绘。"
+                        if getattr(self.mainwindow, "_ui_language", "en") == "zh"
+                        else "Boxes are edited by dragging corners, not repainted.",
+                        4000,
+                    )
+                elif self.hovered_vertex is not None:
                     self.repaint_start_vertex = self.hovered_vertex
                     self.repaint_line_item.addPoint(
                         self.repaint_start_vertex.pos()
@@ -1298,9 +1391,53 @@ class AnnotationScene(QtWidgets.QGraphicsScene):
         if pos.y() > self.height() - 1:
             pos.setY(self.height() - 1)
 
+        origin = self._bbox_drag_origin
+        graph = self.current_graph
+        if (
+            origin is not None
+            and self.mode == STATUSMode.CREATE
+            and self.draw_mode == DRAWMode.BBOX
+            and isinstance(graph, BBox)
+            and graph.is_drawing
+        ):
+            # A drag completes the box on release; a click waits for the
+            # second corner.  The threshold is in screen pixels.
+            scale = 1.0
+            views = self.views()
+            if views:
+                scale = max(1e-6, abs(views[0].transform().m11()))
+            moved = max(abs(pos.x() - origin.x()), abs(pos.y() - origin.y())) * scale
+            if moved >= 6:
+                self._bbox_drag_origin = None
+                self._complete_bbox(pos)
+
         self.mainwindow.plugin_manager_dialog.trigger_on_mouse_release(pos)
 
         super(AnnotationScene, self).mouseReleaseEvent(event)
+        # A drag (vertex, shape) is one undo step, recorded on release.
+        flush = getattr(self.mainwindow, "flush_frame_history", None)
+        if flush is not None:
+            flush()
+
+    def _constrain_bbox(self, origin: QtCore.QPointF, pos: QtCore.QPointF) -> QtCore.QPointF:
+        """Shift draws a square box, clamped to the image."""
+        if not self.shift_pressed:
+            return pos
+        dx, dy = pos.x() - origin.x(), pos.y() - origin.y()
+        side = max(abs(dx), abs(dy))
+        x = origin.x() + math.copysign(side, dx or 1)
+        y = origin.y() + math.copysign(side, dy or 1)
+        x = min(max(x, 0), max(0, self.width() - 1))
+        y = min(max(y, 0), max(0, self.height() - 1))
+        return QtCore.QPointF(x, y)
+
+    def _complete_bbox(self, pos: QtCore.QPointF):
+        graph = self.current_graph
+        if not isinstance(graph, BBox) or not graph.points:
+            return
+        anchor = QtCore.QPointF(graph.points[0])
+        if graph.complete_from_corners(anchor, self._constrain_bbox(anchor, pos)):
+            self.finish_draw()
 
     def mouseMoveEvent(self, event: "QtWidgets.QGraphicsSceneMouseEvent"):
         pos = event.scenePos()
@@ -1342,6 +1479,11 @@ class AnnotationScene(QtWidgets.QGraphicsScene):
                         last_point = self.current_graph.points[-2]
                         pos = self._constrain_to_angle(last_point, pos)
                     self.current_graph.movePoint(len(self.current_graph.points) - 1, pos)
+
+            elif self.draw_mode == DRAWMode.BBOX:
+                graph = self.current_graph
+                if graph is not None and graph.is_drawing and len(graph.points) == 2:
+                    graph.movePoint(1, self._constrain_bbox(graph.points[0], pos))
 
             elif self.draw_mode == DRAWMode.SEGMENTANYTHING_BOX:
                 if self.prompt_box_item is not None and not self._finish_mask_when_ready:
@@ -1576,11 +1718,23 @@ class AnnotationScene(QtWidgets.QGraphicsScene):
                     self.removeItem(prompt_point_item)
                     del prompt_point_item
                 self.update_mask()
+            elif self.draw_mode == DRAWMode.SEGMENTANYTHING_VISUAL:
+                if self.prompt_visual_current_item is None and self.prompt_visual_point_items:
+                    self.prompt_visual_point_positions.pop()
+                    self.prompt_visual_point_labels.pop()
+                    self.removeItem(self.prompt_visual_point_items.pop())
             elif self.draw_mode == DRAWMode.POLYGON:
                 if len(self.current_graph.points) < 2:
                     return
                 # 移除随鼠标移动的点
                 self.current_graph.removePoint(len(self.current_graph.points) - 2)
+
+            elif self.draw_mode == DRAWMode.BBOX:
+                graph = self.current_graph
+                if graph is not None and graph.points:
+                    graph.delete()
+                    graph.setPolygon(QtGui.QPolygonF())
+                    self._bbox_drag_origin = None
 
             elif self.draw_mode == DRAWMode.OBB:
                 graph = self.current_graph
@@ -1630,14 +1784,11 @@ class AnnotationView(QtWidgets.QGraphicsView):
             if self.scene():  # 同步到scene
                 self.scene().shift_pressed = True
 
-        # --- Temporary OBB shortcuts ---
+        # Rotation keys for selected oriented boxes.  Starting a box is a
+        # regular QAction (configurable shortcut) on the main window.
         scene = self.scene()
         if scene is not None and not event.modifiers() & (QtCore.Qt.ControlModifier | QtCore.Qt.AltModifier | QtCore.Qt.MetaModifier):
-            if event.key() == QtCore.Qt.Key.Key_O:
-                # Start OBB drawing (VIEW mode only)
-                if scene.mode == STATUSMode.VIEW:
-                    scene.start_draw_obb()
-            elif event.key() == QtCore.Qt.Key.Key_N:
+            if event.key() == QtCore.Qt.Key.Key_N:
                 # Rotate selected OBB counter-clockwise
                 scene.rotate_selected_obb(math.radians(15))
             elif event.key() == QtCore.Qt.Key.Key_M:

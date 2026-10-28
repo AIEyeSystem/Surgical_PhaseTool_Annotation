@@ -1,52 +1,758 @@
 {
-  "version": 2,
-  "supportedThemes": ["clinical-light"],
-  "notes": "IVAS intentionally ships one low-glare clinical-light shell with a dark media canvas. Semantic roles are shared by the PyQt stylesheet and timeline rendering.",
+  "version": 3,
+  "defaultTheme": "medical",
+  "supportedThemes": [
+    "medical",
+    "geek",
+    "graphite",
+    "surgical",
+    "aurora"
+  ],
+  "notes": "Generated from IVAS/theme.py THEMES. Every theme declares the same semantic roles; test/test_redesign_workbench.py enforces contrast (normal text 4.5:1, ui/graphic 3:1). Disabled text is incidental and exempt.",
   "themes": {
-    "clinical-light": {
+    "medical": {
+      "zh": "医学蓝白",
+      "en": "Medical Blue",
+      "dark": false,
       "roles": {
-        "canvas": "#111827",
-        "canvas-raised": "#1F2937",
-        "surface": "#F6F8FB",
+        "canvas": "#0B1220",
+        "canvas-raised": "#16233A",
+        "canvas-text": "#C9D6EA",
+        "chrome": "#FFFFFF",
+        "surface": "#F3F7FC",
         "surface-raised": "#FFFFFF",
-        "surface-subtle": "#E8EEF4",
-        "text": "#172033",
-        "text-muted": "#526174",
-        "border": "#718096",
-        "border-subtle": "#CBD5E1",
-        "primary": "#087F8C",
-        "primary-hover": "#066B76",
-        "primary-active": "#075B66",
+        "surface-subtle": "#E7EEF8",
+        "input": "#FFFFFF",
+        "hover": "#EAF2FE",
+        "pressed": "#D6E6FD",
+        "text": "#0F1E36",
+        "text-muted": "#50607A",
+        "icon": "#2D4C7C",
+        "border": "#7D8DA6",
+        "border-subtle": "#D5DEEA",
+        "primary": "#1463D8",
+        "primary-hover": "#0F55BE",
+        "primary-active": "#0B469F",
+        "on-primary": "#FFFFFF",
+        "danger": "#C42B22",
+        "danger-hover": "#A3231C",
+        "danger-active": "#831C16",
+        "on-danger": "#FFFFFF",
+        "focus": "#1463D8",
+        "selection": "#DCEAFE",
+        "on-selection": "#0A3D8F",
+        "disabled-bg": "#EEF2F7",
+        "disabled-text": "#97A3B5",
+        "timeline-phase": "#3B8BEB",
+        "timeline-task": "#F2A93B",
+        "success": "#1C7C54",
+        "warning": "#A15F00"
+      },
+      "pairs": [
+        {
+          "name": "body",
+          "foreground": "text",
+          "background": "surface",
+          "kind": "normal-text"
+        },
+        {
+          "name": "muted-text",
+          "foreground": "text-muted",
+          "background": "surface",
+          "kind": "normal-text"
+        },
+        {
+          "name": "primary-action",
+          "foreground": "on-primary",
+          "background": "primary",
+          "kind": "normal-text"
+        },
+        {
+          "name": "primary-action-hover",
+          "foreground": "on-primary",
+          "background": "primary-hover",
+          "kind": "normal-text"
+        },
+        {
+          "name": "primary-action-active",
+          "foreground": "on-primary",
+          "background": "primary-active",
+          "kind": "normal-text"
+        },
+        {
+          "name": "danger-action",
+          "foreground": "on-danger",
+          "background": "danger",
+          "kind": "normal-text"
+        },
+        {
+          "name": "danger-action-hover",
+          "foreground": "on-danger",
+          "background": "danger-hover",
+          "kind": "normal-text"
+        },
+        {
+          "name": "danger-action-active",
+          "foreground": "on-danger",
+          "background": "danger-active",
+          "kind": "normal-text"
+        },
+        {
+          "name": "border",
+          "foreground": "border",
+          "background": "surface",
+          "kind": "ui"
+        },
+        {
+          "name": "focus",
+          "foreground": "focus",
+          "background": "surface",
+          "kind": "ui"
+        },
+        {
+          "name": "selection",
+          "foreground": "on-selection",
+          "background": "selection",
+          "kind": "normal-text"
+        },
+        {
+          "name": "disabled-text",
+          "foreground": "disabled-text",
+          "background": "disabled-bg",
+          "kind": "incidental"
+        },
+        {
+          "name": "timeline-phase",
+          "foreground": "timeline-phase",
+          "background": "canvas",
+          "kind": "graphic"
+        },
+        {
+          "name": "timeline-task",
+          "foreground": "timeline-task",
+          "background": "canvas",
+          "kind": "graphic"
+        },
+        {
+          "name": "canvas-caption",
+          "foreground": "canvas-text",
+          "background": "canvas",
+          "kind": "normal-text"
+        },
+        {
+          "name": "toolbar-icon",
+          "foreground": "icon",
+          "background": "chrome",
+          "kind": "graphic"
+        },
+        {
+          "name": "hover-text",
+          "foreground": "text",
+          "background": "hover",
+          "kind": "normal-text"
+        },
+        {
+          "name": "checked-border",
+          "foreground": "primary",
+          "background": "chrome",
+          "kind": "ui"
+        }
+      ]
+    },
+    "geek": {
+      "zh": "极客终端",
+      "en": "Geek Terminal",
+      "dark": true,
+      "roles": {
+        "canvas": "#040607",
+        "canvas-raised": "#0D1316",
+        "canvas-text": "#8FD9B0",
+        "chrome": "#0A0E10",
+        "surface": "#0C1013",
+        "surface-raised": "#11171B",
+        "surface-subtle": "#162026",
+        "input": "#070A0C",
+        "hover": "#132A20",
+        "pressed": "#174A33",
+        "text": "#C8F7DC",
+        "text-muted": "#73A68A",
+        "icon": "#5FE3A1",
+        "border": "#3A6B52",
+        "border-subtle": "#1C2C25",
+        "primary": "#00E38C",
+        "primary-hover": "#3BF0A8",
+        "primary-active": "#00B870",
+        "on-primary": "#02160C",
+        "danger": "#FF5C7A",
+        "danger-hover": "#FF7A93",
+        "danger-active": "#E0405E",
+        "on-danger": "#1A0308",
+        "focus": "#00E38C",
+        "selection": "#0F3B29",
+        "on-selection": "#A6FFD4",
+        "disabled-bg": "#0E1417",
+        "disabled-text": "#3E5C4C",
+        "timeline-phase": "#00C2FF",
+        "timeline-task": "#FF9F1C",
+        "success": "#00E38C",
+        "warning": "#FFC857"
+      },
+      "pairs": [
+        {
+          "name": "body",
+          "foreground": "text",
+          "background": "surface",
+          "kind": "normal-text"
+        },
+        {
+          "name": "muted-text",
+          "foreground": "text-muted",
+          "background": "surface",
+          "kind": "normal-text"
+        },
+        {
+          "name": "primary-action",
+          "foreground": "on-primary",
+          "background": "primary",
+          "kind": "normal-text"
+        },
+        {
+          "name": "primary-action-hover",
+          "foreground": "on-primary",
+          "background": "primary-hover",
+          "kind": "normal-text"
+        },
+        {
+          "name": "primary-action-active",
+          "foreground": "on-primary",
+          "background": "primary-active",
+          "kind": "normal-text"
+        },
+        {
+          "name": "danger-action",
+          "foreground": "on-danger",
+          "background": "danger",
+          "kind": "normal-text"
+        },
+        {
+          "name": "danger-action-hover",
+          "foreground": "on-danger",
+          "background": "danger-hover",
+          "kind": "normal-text"
+        },
+        {
+          "name": "danger-action-active",
+          "foreground": "on-danger",
+          "background": "danger-active",
+          "kind": "normal-text"
+        },
+        {
+          "name": "border",
+          "foreground": "border",
+          "background": "surface",
+          "kind": "ui"
+        },
+        {
+          "name": "focus",
+          "foreground": "focus",
+          "background": "surface",
+          "kind": "ui"
+        },
+        {
+          "name": "selection",
+          "foreground": "on-selection",
+          "background": "selection",
+          "kind": "normal-text"
+        },
+        {
+          "name": "disabled-text",
+          "foreground": "disabled-text",
+          "background": "disabled-bg",
+          "kind": "incidental"
+        },
+        {
+          "name": "timeline-phase",
+          "foreground": "timeline-phase",
+          "background": "canvas",
+          "kind": "graphic"
+        },
+        {
+          "name": "timeline-task",
+          "foreground": "timeline-task",
+          "background": "canvas",
+          "kind": "graphic"
+        },
+        {
+          "name": "canvas-caption",
+          "foreground": "canvas-text",
+          "background": "canvas",
+          "kind": "normal-text"
+        },
+        {
+          "name": "toolbar-icon",
+          "foreground": "icon",
+          "background": "chrome",
+          "kind": "graphic"
+        },
+        {
+          "name": "hover-text",
+          "foreground": "text",
+          "background": "hover",
+          "kind": "normal-text"
+        },
+        {
+          "name": "checked-border",
+          "foreground": "primary",
+          "background": "chrome",
+          "kind": "ui"
+        }
+      ]
+    },
+    "graphite": {
+      "zh": "午夜石墨",
+      "en": "Midnight Graphite",
+      "dark": true,
+      "roles": {
+        "canvas": "#0C0D10",
+        "canvas-raised": "#1A1C21",
+        "canvas-text": "#A9B0BC",
+        "chrome": "#191B1F",
+        "surface": "#1E2025",
+        "surface-raised": "#25282E",
+        "surface-subtle": "#2D3037",
+        "input": "#17191D",
+        "hover": "#30343C",
+        "pressed": "#3A3F49",
+        "text": "#E7E9EE",
+        "text-muted": "#9DA4B0",
+        "icon": "#C5CAD3",
+        "border": "#6E7684",
+        "border-subtle": "#353941",
+        "primary": "#2F6FDF",
+        "primary-hover": "#2A66CF",
+        "primary-active": "#2560C4",
+        "on-primary": "#FFFFFF",
+        "danger": "#FF6B6B",
+        "danger-hover": "#FF8787",
+        "danger-active": "#E05252",
+        "on-danger": "#1B0707",
+        "focus": "#6BA1FF",
+        "selection": "#2B3F66",
+        "on-selection": "#E1EAFF",
+        "disabled-bg": "#222429",
+        "disabled-text": "#5C626C",
+        "timeline-phase": "#4C8DFF",
+        "timeline-task": "#F5A524",
+        "success": "#4CC38A",
+        "warning": "#F5B841"
+      },
+      "pairs": [
+        {
+          "name": "body",
+          "foreground": "text",
+          "background": "surface",
+          "kind": "normal-text"
+        },
+        {
+          "name": "muted-text",
+          "foreground": "text-muted",
+          "background": "surface",
+          "kind": "normal-text"
+        },
+        {
+          "name": "primary-action",
+          "foreground": "on-primary",
+          "background": "primary",
+          "kind": "normal-text"
+        },
+        {
+          "name": "primary-action-hover",
+          "foreground": "on-primary",
+          "background": "primary-hover",
+          "kind": "normal-text"
+        },
+        {
+          "name": "primary-action-active",
+          "foreground": "on-primary",
+          "background": "primary-active",
+          "kind": "normal-text"
+        },
+        {
+          "name": "danger-action",
+          "foreground": "on-danger",
+          "background": "danger",
+          "kind": "normal-text"
+        },
+        {
+          "name": "danger-action-hover",
+          "foreground": "on-danger",
+          "background": "danger-hover",
+          "kind": "normal-text"
+        },
+        {
+          "name": "danger-action-active",
+          "foreground": "on-danger",
+          "background": "danger-active",
+          "kind": "normal-text"
+        },
+        {
+          "name": "border",
+          "foreground": "border",
+          "background": "surface",
+          "kind": "ui"
+        },
+        {
+          "name": "focus",
+          "foreground": "focus",
+          "background": "surface",
+          "kind": "ui"
+        },
+        {
+          "name": "selection",
+          "foreground": "on-selection",
+          "background": "selection",
+          "kind": "normal-text"
+        },
+        {
+          "name": "disabled-text",
+          "foreground": "disabled-text",
+          "background": "disabled-bg",
+          "kind": "incidental"
+        },
+        {
+          "name": "timeline-phase",
+          "foreground": "timeline-phase",
+          "background": "canvas",
+          "kind": "graphic"
+        },
+        {
+          "name": "timeline-task",
+          "foreground": "timeline-task",
+          "background": "canvas",
+          "kind": "graphic"
+        },
+        {
+          "name": "canvas-caption",
+          "foreground": "canvas-text",
+          "background": "canvas",
+          "kind": "normal-text"
+        },
+        {
+          "name": "toolbar-icon",
+          "foreground": "icon",
+          "background": "chrome",
+          "kind": "graphic"
+        },
+        {
+          "name": "hover-text",
+          "foreground": "text",
+          "background": "hover",
+          "kind": "normal-text"
+        },
+        {
+          "name": "checked-border",
+          "foreground": "primary",
+          "background": "chrome",
+          "kind": "ui"
+        }
+      ]
+    },
+    "surgical": {
+      "zh": "手术室青",
+      "en": "Surgical Teal",
+      "dark": false,
+      "roles": {
+        "canvas": "#0F1A1C",
+        "canvas-raised": "#1B2B2E",
+        "canvas-text": "#C3D7D8",
+        "chrome": "#FBFDFD",
+        "surface": "#F2F7F7",
+        "surface-raised": "#FFFFFF",
+        "surface-subtle": "#E2EEEE",
+        "input": "#FFFFFF",
+        "hover": "#E3F3F3",
+        "pressed": "#CBE9EA",
+        "text": "#122426",
+        "text-muted": "#4D6467",
+        "icon": "#1F5A5F",
+        "border": "#76908F",
+        "border-subtle": "#CFE0E0",
+        "primary": "#08808B",
+        "primary-hover": "#066C76",
+        "primary-active": "#055A62",
         "on-primary": "#FFFFFF",
         "danger": "#B42318",
         "danger-hover": "#8F1C14",
         "danger-active": "#731610",
         "on-danger": "#FFFFFF",
-        "focus": "#087F8C",
-        "selection": "#C9E9ED",
+        "focus": "#08808B",
+        "selection": "#CDECEE",
         "on-selection": "#0B3E45",
-        "disabled-bg": "#E2E8EF",
-        "disabled-text": "#526174",
+        "disabled-bg": "#EAF1F1",
+        "disabled-text": "#93A8A9",
         "timeline-phase": "#21A6B3",
         "timeline-task": "#F4A340",
         "success": "#207A4B",
         "warning": "#9A6700"
       },
       "pairs": [
-        {"name": "body", "foreground": "text", "background": "surface", "kind": "normal-text"},
-        {"name": "muted-text", "foreground": "text-muted", "background": "surface", "kind": "normal-text"},
-        {"name": "primary-action", "foreground": "on-primary", "background": "primary", "kind": "normal-text"},
-        {"name": "primary-action-hover", "foreground": "on-primary", "background": "primary-hover", "kind": "normal-text"},
-        {"name": "primary-action-active", "foreground": "on-primary", "background": "primary-active", "kind": "normal-text"},
-        {"name": "danger-action", "foreground": "on-danger", "background": "danger", "kind": "normal-text"},
-        {"name": "danger-action-hover", "foreground": "on-danger", "background": "danger-hover", "kind": "normal-text"},
-        {"name": "danger-action-active", "foreground": "on-danger", "background": "danger-active", "kind": "normal-text"},
-        {"name": "border", "foreground": "border", "background": "surface", "kind": "ui"},
-        {"name": "focus", "foreground": "focus", "background": "surface", "kind": "ui"},
-        {"name": "selection", "foreground": "on-selection", "background": "selection", "kind": "normal-text"},
-        {"name": "disabled-text", "foreground": "disabled-text", "background": "disabled-bg", "kind": "normal-text"},
-        {"name": "timeline-phase", "foreground": "timeline-phase", "background": "canvas", "kind": "graphic"},
-        {"name": "timeline-task", "foreground": "timeline-task", "background": "canvas", "kind": "graphic"}
+        {
+          "name": "body",
+          "foreground": "text",
+          "background": "surface",
+          "kind": "normal-text"
+        },
+        {
+          "name": "muted-text",
+          "foreground": "text-muted",
+          "background": "surface",
+          "kind": "normal-text"
+        },
+        {
+          "name": "primary-action",
+          "foreground": "on-primary",
+          "background": "primary",
+          "kind": "normal-text"
+        },
+        {
+          "name": "primary-action-hover",
+          "foreground": "on-primary",
+          "background": "primary-hover",
+          "kind": "normal-text"
+        },
+        {
+          "name": "primary-action-active",
+          "foreground": "on-primary",
+          "background": "primary-active",
+          "kind": "normal-text"
+        },
+        {
+          "name": "danger-action",
+          "foreground": "on-danger",
+          "background": "danger",
+          "kind": "normal-text"
+        },
+        {
+          "name": "danger-action-hover",
+          "foreground": "on-danger",
+          "background": "danger-hover",
+          "kind": "normal-text"
+        },
+        {
+          "name": "danger-action-active",
+          "foreground": "on-danger",
+          "background": "danger-active",
+          "kind": "normal-text"
+        },
+        {
+          "name": "border",
+          "foreground": "border",
+          "background": "surface",
+          "kind": "ui"
+        },
+        {
+          "name": "focus",
+          "foreground": "focus",
+          "background": "surface",
+          "kind": "ui"
+        },
+        {
+          "name": "selection",
+          "foreground": "on-selection",
+          "background": "selection",
+          "kind": "normal-text"
+        },
+        {
+          "name": "disabled-text",
+          "foreground": "disabled-text",
+          "background": "disabled-bg",
+          "kind": "incidental"
+        },
+        {
+          "name": "timeline-phase",
+          "foreground": "timeline-phase",
+          "background": "canvas",
+          "kind": "graphic"
+        },
+        {
+          "name": "timeline-task",
+          "foreground": "timeline-task",
+          "background": "canvas",
+          "kind": "graphic"
+        },
+        {
+          "name": "canvas-caption",
+          "foreground": "canvas-text",
+          "background": "canvas",
+          "kind": "normal-text"
+        },
+        {
+          "name": "toolbar-icon",
+          "foreground": "icon",
+          "background": "chrome",
+          "kind": "graphic"
+        },
+        {
+          "name": "hover-text",
+          "foreground": "text",
+          "background": "hover",
+          "kind": "normal-text"
+        },
+        {
+          "name": "checked-border",
+          "foreground": "primary",
+          "background": "chrome",
+          "kind": "ui"
+        }
+      ]
+    },
+    "aurora": {
+      "zh": "北极光",
+      "en": "Nordic Aurora",
+      "dark": true,
+      "roles": {
+        "canvas": "#191D25",
+        "canvas-raised": "#262C38",
+        "canvas-text": "#C9D1DE",
+        "chrome": "#2A303C",
+        "surface": "#2E3440",
+        "surface-raised": "#353C4A",
+        "surface-subtle": "#3B4252",
+        "input": "#262B35",
+        "hover": "#434C5E",
+        "pressed": "#4C566A",
+        "text": "#ECEFF4",
+        "text-muted": "#AEB7C8",
+        "icon": "#D8DEE9",
+        "border": "#7A88A1",
+        "border-subtle": "#434C5E",
+        "primary": "#88C0D0",
+        "primary-hover": "#9FCDDA",
+        "primary-active": "#6FAEC0",
+        "on-primary": "#1D2330",
+        "danger": "#E07A84",
+        "danger-hover": "#E8939B",
+        "danger-active": "#BF616A",
+        "on-danger": "#1D1013",
+        "focus": "#8FBCBB",
+        "selection": "#3E5A6E",
+        "on-selection": "#EAF6FA",
+        "disabled-bg": "#323846",
+        "disabled-text": "#6B7488",
+        "timeline-phase": "#81A1C1",
+        "timeline-task": "#D08770",
+        "success": "#A3BE8C",
+        "warning": "#EBCB8B"
+      },
+      "pairs": [
+        {
+          "name": "body",
+          "foreground": "text",
+          "background": "surface",
+          "kind": "normal-text"
+        },
+        {
+          "name": "muted-text",
+          "foreground": "text-muted",
+          "background": "surface",
+          "kind": "normal-text"
+        },
+        {
+          "name": "primary-action",
+          "foreground": "on-primary",
+          "background": "primary",
+          "kind": "normal-text"
+        },
+        {
+          "name": "primary-action-hover",
+          "foreground": "on-primary",
+          "background": "primary-hover",
+          "kind": "normal-text"
+        },
+        {
+          "name": "primary-action-active",
+          "foreground": "on-primary",
+          "background": "primary-active",
+          "kind": "normal-text"
+        },
+        {
+          "name": "danger-action",
+          "foreground": "on-danger",
+          "background": "danger",
+          "kind": "normal-text"
+        },
+        {
+          "name": "danger-action-hover",
+          "foreground": "on-danger",
+          "background": "danger-hover",
+          "kind": "normal-text"
+        },
+        {
+          "name": "danger-action-active",
+          "foreground": "on-danger",
+          "background": "danger-active",
+          "kind": "normal-text"
+        },
+        {
+          "name": "border",
+          "foreground": "border",
+          "background": "surface",
+          "kind": "ui"
+        },
+        {
+          "name": "focus",
+          "foreground": "focus",
+          "background": "surface",
+          "kind": "ui"
+        },
+        {
+          "name": "selection",
+          "foreground": "on-selection",
+          "background": "selection",
+          "kind": "normal-text"
+        },
+        {
+          "name": "disabled-text",
+          "foreground": "disabled-text",
+          "background": "disabled-bg",
+          "kind": "incidental"
+        },
+        {
+          "name": "timeline-phase",
+          "foreground": "timeline-phase",
+          "background": "canvas",
+          "kind": "graphic"
+        },
+        {
+          "name": "timeline-task",
+          "foreground": "timeline-task",
+          "background": "canvas",
+          "kind": "graphic"
+        },
+        {
+          "name": "canvas-caption",
+          "foreground": "canvas-text",
+          "background": "canvas",
+          "kind": "normal-text"
+        },
+        {
+          "name": "toolbar-icon",
+          "foreground": "icon",
+          "background": "chrome",
+          "kind": "graphic"
+        },
+        {
+          "name": "hover-text",
+          "foreground": "text",
+          "background": "hover",
+          "kind": "normal-text"
+        },
+        {
+          "name": "checked-border",
+          "foreground": "primary",
+          "background": "chrome",
+          "kind": "ui"
+        }
       ]
     }
   }

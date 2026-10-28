@@ -12,7 +12,33 @@ from PIL import Image
 
 from IVAS.branding import ANNOTATION_FORMAT, SUPPORTED_ANNOTATION_FORMATS
 
-__all__ = ["Object", "Annotation"]
+__all__ = [
+    "Object",
+    "Annotation",
+    "SHAPE_TYPES",
+    "normalize_shape_type",
+    "rectangle_segmentation",
+]
+
+SHAPE_TYPES = ("polygon", "rectangle", "obb")
+
+
+def normalize_shape_type(shape_type, is_obb: bool = False) -> str:
+    r"""Return a valid shape type; empty/unknown values fall back on ``is_obb``."""
+    value = shape_type.strip().lower() if isinstance(shape_type, str) else ""
+    if value in SHAPE_TYPES:
+        return value
+    return "obb" if is_obb else "polygon"
+
+
+def rectangle_segmentation(xmin, ymin, xmax, ymax) -> list:
+    r"""Return the 4 axis-aligned corners clockwise (image coords) from top-left.
+
+    The bounds are normalised so that ``xmin <= xmax`` and ``ymin <= ymax``.
+    """
+    xmin, xmax = (xmin, xmax) if xmin <= xmax else (xmax, xmin)
+    ymin, ymax = (ymin, ymax) if ymin <= ymax else (ymax, ymin)
+    return [(xmin, ymin), (xmax, ymin), (xmax, ymax), (xmin, ymax)]
 
 
 class Object:
@@ -22,11 +48,15 @@ class Object:
         category (str): The category of the object.
         group (int): The group of the object.
         segmentation (list | tuple): The vertices of the object.[(x1, y1), (x2, y2), ...]
+            Rectangles always store the 4 corners from :func:`rectangle_segmentation`.
         area (float): The area of the object.
         layer (int): The layer of the object.
         bbox (list | tuple): The bbox of the object. [xmin, ymin, xmax, ymax]
         iscrowd (bool): The crowd tag of the object.
         note (str): The note of the object.
+        is_obb (bool): Legacy oriented-box flag; equivalent to ``shape_type == "obb"``.
+        shape_type (str): ``"polygon"``, ``"rectangle"`` or ``"obb"``. Empty or
+            unknown values become ``"obb"`` when ``is_obb`` is set, else ``"polygon"``.
     """
 
     def __init__(
@@ -45,6 +75,7 @@ class Object:
         source: str = "manual",
         review_status: str = "reviewed",
         origin_source: str = "",
+        shape_type: str = "",
     ):
         self.category = category
         self.group = group
@@ -54,12 +85,32 @@ class Object:
         self.bbox = bbox
         self.iscrowd = iscrowd
         self.note = note
-        self.is_obb = is_obb
+        self._shape_type = normalize_shape_type(shape_type, bool(is_obb))
         self.object_id = str(object_id or "")
         self.track_id = str(track_id or "")
         self.source = str(source or "manual")
         self.review_status = str(review_status or "reviewed")
         self.origin_source = str(origin_source or "")
+
+    # ``shape_type`` is the source of truth; ``is_obb`` is a legacy view of it.
+    @property
+    def shape_type(self) -> str:
+        return getattr(self, "_shape_type", "polygon")
+
+    @shape_type.setter
+    def shape_type(self, value):
+        self._shape_type = normalize_shape_type(value, self.is_obb)
+
+    @property
+    def is_obb(self) -> bool:
+        return self.shape_type == "obb"
+
+    @is_obb.setter
+    def is_obb(self, value):
+        if value:
+            self._shape_type = "obb"
+        elif self.is_obb:
+            self._shape_type = "polygon"
 
     @classmethod
     def from_dict(cls, value):
@@ -77,17 +128,25 @@ class Object:
         layer = value.get("layer", 2)
         if not isinstance(layer, (int, float)) or not math.isfinite(layer):
             raise ValueError("Annotation layer must be finite")
+        is_obb = boolean(value.get("is_obb", False))
+        shape_type = normalize_shape_type(value.get("shape_type", ""), is_obb)
+        if shape_type == "rectangle":
+            # Keep the documented corner order even for hand-edited files.
+            xs = [point[0] for point in points]
+            ys = [point[1] for point in points]
+            points = [list(point) for point in rectangle_segmentation(min(xs), min(ys), max(xs), max(ys))]
         return cls(str(value.get("category", "unknown")), int(value.get("group") or 0), points,
                    value.get("area") or 0, layer, value.get("bbox", []),
                    boolean(value.get("iscrowd", False)), str(value.get("note") or ""),
-                   boolean(value.get("is_obb", False)), value.get("object_id", ""),
+                   is_obb, value.get("object_id", ""),
                    value.get("track_id", ""), value.get("source", "manual"),
-                   value.get("review_status", "reviewed"), value.get("origin_source", ""))
+                   value.get("review_status", "reviewed"), value.get("origin_source", ""),
+                   shape_type=shape_type)
 
     def to_dict(self):
         result = {name: getattr(self, name) for name in (
-            "category", "group", "segmentation", "area", "layer", "bbox", "iscrowd", "note", "is_obb",
-            "source", "review_status")}
+            "category", "group", "segmentation", "area", "layer", "bbox", "iscrowd", "note",
+            "shape_type", "is_obb", "source", "review_status")}
         for name in ("object_id", "track_id", "origin_source"):
             if getattr(self, name, ""):
                 result[name] = getattr(self, name)

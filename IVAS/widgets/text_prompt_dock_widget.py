@@ -14,8 +14,27 @@ from IVAS.configs import MAPMode, STATUSMode
 from IVAS.widgets.responsive import ResponsiveDialog
 
 
+def _quoted_prompts(prompts, chinese):
+    if chinese:
+        return "".join("「{}」".format(prompt) for prompt in prompts)
+    return ", ".join("‘{}’".format(prompt) for prompt in prompts)
+
+
+def empty_result_message(prompts, chinese, created=0):
+    """Non-blocking note for prompts that produced no mask on the current image."""
+    names = _quoted_prompts(prompts, chinese)
+    if chinese:
+        message = "未在当前图像中找到{}".format(names)
+        return "新增 {} 个目标；{}".format(created, message) if created else message
+    message = "No {} objects found in this image".format(names)
+    return "Added {} object(s). {}".format(created, message) if created else message
+
+
 class TextPromptBatchDialog(ResponsiveDialog):
     cancelRequested = QtCore.pyqtSignal()
+
+    # Long folders can list many images without detections; keep the dialog light.
+    MAX_LISTED_EMPTY = 200
 
     def __init__(self, parent, category, total, missing_only, chinese):
         super().__init__(parent)
@@ -32,6 +51,11 @@ class TextPromptBatchDialog(ResponsiveDialog):
         self.progress.setRange(0, max(1, total))
         self.progress.setValue(0)
         layout.addWidget(self.progress)
+        # Per-image work can take long (wait for the encoder, full SAM3 encode).
+        # A live position and elapsed clock shows the job is alive meanwhile.
+        self.status = QtWidgets.QLabel(self)
+        self.status.setObjectName("batchStatus")
+        layout.addWidget(self.status)
         self.details = QtWidgets.QPlainTextEdit(self)
         self.details.setReadOnly(True)
         layout.addWidget(self.details)
@@ -42,17 +66,45 @@ class TextPromptBatchDialog(ResponsiveDialog):
         self.buttons.rejected.connect(self.reject)
         layout.addWidget(self.buttons)
         self.finished.connect(self.deleteLater)
+        self._current, self._total = 0, total
+        self._elapsed = QtCore.QElapsedTimer()
+        self._elapsed.start()
+        self._clock = QtCore.QTimer(self)
+        self._clock.setInterval(1000)
+        self._clock.timeout.connect(self._update_status)
+        self._clock.start()
+        self._update_status()
 
-    def update_progress(self, current, total, filename):
+    def _update_status(self):
+        seconds = self._elapsed.elapsed() // 1000
+        clock = "{}:{:02d}".format(seconds // 60, seconds % 60)
+        template = "第 {} / {} 张 · 已用时 {}" if self.chinese else "Image {} / {} · elapsed {}"
+        shown = min(self._current + (1 if self.running else 0), self._total)
+        self.status.setText(template.format(shown, self._total, clock))
+
+    def update_progress(self, current, total, message):
+        self._current, self._total = current, total
         self.progress.setMaximum(max(1, total))
         self.progress.setValue(current)
         if self.cancel_button.isEnabled():
-            self.details.setPlainText(filename)
+            self.details.setPlainText(message)
+        self._update_status()
 
-    def complete(self, summary, errors):
+    def complete(self, summary, errors, empty_files=()):
         self.running = False
+        self._clock.stop()
+        self._update_status()
         self.label.setText(summary)
-        self.details.setPlainText("\n".join(errors))
+        lines = list(errors)
+        empty_files = list(empty_files)
+        if empty_files:
+            if lines:
+                lines.append("")
+            lines.append("无检测结果：" if self.chinese else "No detections:")
+            lines.extend(empty_files[:self.MAX_LISTED_EMPTY])
+            if len(empty_files) > self.MAX_LISTED_EMPTY:
+                lines.append("…")
+        self.details.setPlainText("\n".join(lines))
         self.cancel_button.setText("关闭" if self.chinese else "Close")
         self.cancel_button.setEnabled(True)
 
@@ -169,7 +221,14 @@ class TextPromptDockWidget(QtWidgets.QWidget, Ui_Form):
         )
         self.pushButton_predict_for_multi_categoriies.setMaximumWidth(16777215)
         self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
+        # Non-blocking outcome note, e.g. when a prompt found nothing.
+        self.label_result_note = QtWidgets.QLabel()
+        self.label_result_note.setObjectName("promptResultNote")
+        self.label_result_note.setWordWrap(True)
+        self.label_result_note.setVisible(False)
+        self.verticalLayout.addWidget(self.label_result_note)
         self.verticalLayout.addStretch(1)
+        self._job_prompts = ()
 
         self.pushButton_predict_for_single_category.clicked.connect(
             self.predict_for_single_category
@@ -215,6 +274,19 @@ class TextPromptDockWidget(QtWidgets.QWidget, Ui_Form):
     def invalidate_prediction(self):
         """A result belongs to one frame visit, even after navigating away and back."""
         self._job_context = None
+        self.show_result_note("")
+
+    def _chinese(self):
+        language = getattr(self.mainwindow, "_ui_language", None)
+        if language is None:
+            cfg = getattr(self.mainwindow, "cfg", None) or {}
+            language = (cfg.get("software") or {}).get("language")
+        return language == "zh"
+
+    def show_result_note(self, text):
+        self.label_result_note.setText(text)
+        self.label_result_note.setToolTip(text)
+        self.label_result_note.setVisible(bool(text))
 
     def predict_for_selected_category(self):
         category = self.mainwindow.current_category
@@ -223,16 +295,22 @@ class TextPromptDockWidget(QtWidgets.QWidget, Ui_Form):
             return
         self._start_prediction([(category, category)])
 
+    def _refuse(self, chinese, english):
+        # Refusals used to be silent, which read as "the button does nothing".
+        self.mainwindow.statusbar.showMessage(chinese if self._chinese() else english, 5000)
+        return False
+
     def _validate_ready(self, require_cached_state=True):
         if self.mainwindow.scene.mode != STATUSMode.VIEW:
-            self.mainwindow.statusbar.showMessage("请先完成或取消当前图形，再执行文本分割。", 4000)
-            return False
+            return self._refuse("请先完成或取消当前图形，再执行文本分割。",
+                                "Finish or cancel the current shape before text segmentation.")
         if (getattr(self.mainwindow, "annotation_mode", "Frame") != "Frame"
                 or self.mainwindow.map_mode != MAPMode.LABEL
                 or not self.mainwindow.can_be_annotated):
-            return False
+            return self._refuse("文本分割仅适用于帧模式下可标注的图像（标注视图）。",
+                                "Text segmentation needs an annotatable image in Frame mode (label view).")
         if self._worker is not None:
-            return False
+            return self._refuse("文本分割任务正在运行。", "A text segmentation job is already running.")
         segany = getattr(self.mainwindow, "segany", None)
         if (
             not self.mainwindow.use_segment_anything
@@ -267,6 +345,7 @@ class TextPromptDockWidget(QtWidgets.QWidget, Ui_Form):
             return
         if not self._validate_ready(require_cached_state=False):
             return
+        window._drop_encode_waiters()  # a queued single-image Segment yields to the batch
         workspace = window.video_annotation_workspace
         competing = (
             getattr(window.visual_prompt_dock_widget, "_worker", None),
@@ -301,40 +380,64 @@ class TextPromptDockWidget(QtWidgets.QWidget, Ui_Form):
         self._batch_label_root = window.label_root
         self._batch_store = store
         self._batch_report = None
+        self.show_result_note("")
         filenames = tuple(window.files_list)
+        chinese = self._chinese()
         self._worker = TaskWorker(partial(
             segment_folder_with_text_prompt, window.segany, window.image_root,
             window.label_root, filenames, category, category, bool(missing_only),
             (window.scene.contour_mode, window.scene.contour_method,
              window.cfg["software"]["use_polydp"]),
             project_path=store.path if store is not None else None,
+            language="zh" if chinese else "en",
         ))
         self._set_busy(True, len(filenames))
         dialog = self._batch_dialog = TextPromptBatchDialog(
             window, window.category_display_name(category), len(filenames),
-            missing_only, window.cfg["software"].get("language") == "zh",
+            missing_only, chinese,
         )
         dialog.cancelRequested.connect(self._worker.cancel)
         self._worker.progress.connect(dialog.update_progress)
+        self._worker.progress.connect(self._batch_progress)
         self._worker.result.connect(self._batch_prediction_finished)
         self._worker.finished.connect(self._batch_worker_finished)
         dialog.show()
         self._worker.start()
 
+    @staticmethod
+    def _empty_report(cancelled=False):
+        return dict(processed=0, skipped=0, empty=0, objects=0, cancelled=cancelled,
+                    written_paths=[], errors=[], empty_files=[])
+
+    @QtCore.pyqtSlot(int, int, str)
+    def _batch_progress(self, current, total, _message):
+        self.progressBar.setMaximum(max(total, 1))
+        self.progressBar.setValue(current)
+
     @QtCore.pyqtSlot(object, str)
     def _batch_prediction_finished(self, report, error):
-        self._batch_report = report or dict(processed=0, skipped=0, empty=0, objects=0,
-                                          cancelled=False, written_paths=[], errors=[])
+        self._batch_report = report or self._empty_report()
+        self._batch_report.setdefault("empty_files", [])
         if error:
             self._batch_report["errors"].append(error)
 
     @QtCore.pyqtSlot()
     def _batch_worker_finished(self):
+        """Refresh what the batch wrote, then always release the modal dialog.
+
+        A failure while refreshing must never leave the WindowModal dialog in
+        its running state: it refuses to close then and blocks the window.
+        """
         window = self.mainwindow
+        worker = self._worker
+        if self._batch_report is None:
+            cancelled = worker is not None and worker.cancel_event.is_set()
+            self._batch_report = self._empty_report(cancelled)
+            self._batch_report["errors"].append("The batch stopped without a report.")
         report = self._batch_report
-        current = (self._context_is_current(self._job_id)
-                   and window.label_root == self._batch_label_root and window.saved)
         try:
+            current = (self._context_is_current(self._job_id)
+                       and window.label_root == self._batch_label_root and window.saved)
             workspace = window.video_annotation_workspace
             if self._batch_store is not None and workspace.store is self._batch_store:
                 for path in report["written_paths"]:
@@ -350,17 +453,29 @@ class TextPromptDockWidget(QtWidgets.QWidget, Ui_Form):
         except Exception as error:
             report["errors"].append(str(error))
         finally:
-            self._worker_finished()
-        chinese = self._batch_dialog.chinese
+            try:
+                self._worker_finished()
+            except Exception as error:
+                report["errors"].append(str(error))
+            self._complete_batch(report)
+
+    def _complete_batch(self, report):
+        dialog = self._batch_dialog
+        chinese = dialog.chinese if dialog is not None else self._chinese()
         state = ("已取消" if report["cancelled"] else "完成") if chinese else (
             "Cancelled" if report["cancelled"] else "Finished")
-        template = ("{}：处理 {} 张，跳过 {} 张，无结果 {} 张，新增 {} 个轮廓，失败 {} 项。"
-                    if chinese else "{}: processed {}, skipped {}, empty {}, added {} objects, {} error(s).")
+        template = ("{}：处理 {} 张，跳过 {} 张，无检测结果 {} 张，新增 {} 个轮廓，失败 {} 项。"
+                    if chinese else
+                    "{}: processed {}, skipped {}, no detections in {}, added {} objects, {} error(s).")
         summary = template.format(state, report["processed"], report["skipped"],
                                   report["empty"], report["objects"], len(report["errors"]))
         self.label_num_objects.setText(str(report["objects"]))
-        self._batch_dialog.complete(summary, report["errors"])
-        window.statusbar.showMessage(summary, 10000)
+        if dialog is not None:
+            try:
+                dialog.complete(summary, report["errors"], report.get("empty_files", ()))
+            except RuntimeError:
+                pass  # The dialog was already destroyed.
+        self.mainwindow.statusbar.showMessage(summary, 10000)
 
     def predict_for_single_category(self):
         category = self.mainwindow.current_category
@@ -385,8 +500,20 @@ class TextPromptDockWidget(QtWidgets.QWidget, Ui_Form):
         ]
         self._start_prediction(requests)
 
+    def _needs_encoding(self):
+        segany = self.mainwindow.segany
+        return (segany.model_source == "sam3.1"
+                and self.mainwindow.current_index not in self.mainwindow.seganythread.results_dict)
+
     def _start_prediction(self, requests):
-        if not requests or not self._validate_ready():
+        if not requests or not self._validate_ready(require_cached_state=False):
+            return
+        if self._needs_encoding():
+            # SAM3.1 predicts from the cached encoding; wait for it and go on.
+            self.show_result_note(
+                "正在编码当前图像，完成后自动分割…" if self._chinese()
+                else "Encoding the current image; segmentation starts when it is ready…")
+            self.mainwindow.run_when_encoded("text", lambda: self._start_prediction(requests))
             return
         index = self.mainwindow.current_index
         filename = self.mainwindow.files_list[index]
@@ -400,6 +527,8 @@ class TextPromptDockWidget(QtWidgets.QWidget, Ui_Form):
             filename,
             os.path.normcase(os.path.abspath(image_path)),
         )
+        self._job_prompts = tuple(prompt for _, prompt in requests)
+        self.show_result_note("")
         self._set_busy(True, len(requests))
         self._worker = TextPromptThread(
             job_id,
@@ -445,15 +574,26 @@ class TextPromptDockWidget(QtWidgets.QWidget, Ui_Form):
             self.label_num_objects.setText("0")
             return
         created = 0
-        for position, (category, masks, scores) in enumerate(results, 1):
-            created += self.mainwindow._process_sam_masks(
+        empty_prompts = []
+        prompts = self._job_prompts if len(self._job_prompts) == len(results) else (
+            tuple(category for category, _, _ in results))
+        for position, ((category, masks, scores), prompt) in enumerate(zip(results, prompts), 1):
+            count = self.mainwindow._process_sam_masks(
                 masks, scores, category, notify=False
             )
+            created += count
+            if not count:
+                empty_prompts.append(prompt)
             self.progressBar.setValue(position)
         if created:
             self.mainwindow.set_saved_state(False)
             self.mainwindow.plugin_manager_dialog.trigger_after_annotation_created()
         self.label_num_objects.setText(str(created))
+        if empty_prompts:
+            # Zero masks is a valid answer; say so instead of silently showing "0".
+            message = empty_result_message(empty_prompts, self._chinese(), created)
+            self.show_result_note(message)
+            self.mainwindow.statusbar.showMessage(message, 8000)
 
     @QtCore.pyqtSlot()
     def _worker_finished(self):

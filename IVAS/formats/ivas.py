@@ -4,7 +4,7 @@
 import os
 from json import dump, load
 from typing import Dict, Tuple
-from IVAS.annotation import Object
+from IVAS.annotation import Object, rectangle_segmentation
 from IVAS.utils.persistence import atomic_write_bytes
 import json
 
@@ -75,6 +75,8 @@ class IVAS:
                 bbox (list | tuple): The bounding box coordinates in the format [x_min, y_min, x_max, y_max].
                 iscrowd (bool): A boolean value indicating if the object is part of a crowd.
                 note (str): An optional field for any additional notes related to the object.
+                shape_type (str): "polygon" (default), "rectangle" or "obb". Rectangles store
+                    their 4 corners clockwise from the top-left in ``segmentation``.
             """
 
             category = ""
@@ -173,6 +175,46 @@ class IVAS:
             str: The file name without the file suffix.
         """
         return os.path.splitext(file_name)[0]
+
+    @staticmethod
+    def segmentation_bounds(segmentation) -> Tuple[float, float, float, float]:
+        r"""
+        Return the (xmin, ymin, xmax, ymax) bounds of a list of (x, y) vertices.
+        """
+        xs = [point[0] for point in segmentation]
+        ys = [point[1] for point in segmentation]
+        if not xs:
+            raise ValueError("Cannot compute the bounds of an empty segmentation")
+        return min(xs), min(ys), max(xs), max(ys)
+
+    def make_rectangle_obj(
+        self,
+        category,
+        group: int,
+        xmin: float,
+        ymin: float,
+        xmax: float,
+        ymax: float,
+        layer: float = 1,
+        iscrowd: bool = False,
+        note: str = "",
+    ) -> "IVAS.ANNO.OBJ":
+        r"""
+        Build an axis-aligned rectangle OBJ from its bounds.
+        """
+        segmentation = rectangle_segmentation(xmin, ymin, xmax, ymax)
+        (xmin, ymin), (xmax, ymax) = segmentation[0], segmentation[2]
+        obj = self.ANNO.OBJ()
+        obj.category = category
+        obj.group = group
+        obj.segmentation = segmentation
+        obj.area = (xmax - xmin) * (ymax - ymin)
+        obj.layer = layer
+        obj.bbox = [xmin, ymin, xmax, ymax]
+        obj.iscrowd = iscrowd
+        obj.note = note
+        obj.shape_type = "rectangle"
+        return obj
 
     def load_one_ivas_json(self, json_path: str) -> ANNO:
         r"""

@@ -28,7 +28,8 @@ from IVAS.branding import (
 from IVAS.configs import (CHECKPOINT_PATH, CONFIG_FILE, IVAS_ROOT,
                           SOFTWARE_CONFIG_FILE, CONTOURMode, MAPMode, CONTOURMethod,
                           STATUSMode, load_config, save_config)
-from IVAS.theme import theme_hex
+from IVAS.theme import (active_theme, apply_workbench_theme, available_themes,
+                        normalize_theme, theme_hex)
 from IVAS.ui.MainWindow import Ui_MainWindow
 from IVAS.widgets.annos_dock_widget import AnnosDockWidget
 from IVAS.widgets.canvas import AnnotationScene, AnnotationView
@@ -39,10 +40,11 @@ from IVAS.widgets.info_dock_widget import InfoDockWidget
 from IVAS.widgets.text_prompt_dock_widget import TextPromptDockWidget
 from IVAS.widgets.visuall_prompt_dock_widget import VisualPromptDockWidget
 from IVAS.widgets.plugin_manager_dialog import PluginManagerDialog
-from IVAS.widgets.polygon import OBB, Polygon, PromptPoint
+from IVAS.widgets.polygon import BBox, OBB, Polygon, PromptPoint, shape_for_object
 from IVAS.widgets.right_button_menu import RightButtonMenu
 from IVAS.widgets.setting_dialog import SettingDialog
 from IVAS.widgets.responsive import CurrentWorkspaceStack, scrollable_content
+from IVAS.widgets.workbench_chrome import ModeSegment, apply_action_icons, icon_for
 
 
 def _find_category_config(directory):
@@ -205,6 +207,23 @@ class SegAnyThread(QThread):
                 tuple(self.mainwindow.files_list),
             )
         if not self.isRunning():
+            self.start()
+
+    def ensure_requested(self, index):
+        """Queue ``index`` unless it is cached or that exact frame is in flight.
+
+        Re-requesting a frame that is already being encoded would discard the
+        running encode and start it again, doubling the wait.
+        """
+        target = (index, self.mainwindow.image_root, tuple(self.mainwindow.files_list))
+        with self._request_lock:
+            if index in self.results_dict:
+                return
+            in_flight = (self._request is not None and self._request[1:] == target
+                         and self._request[0] != self._completed_serial)
+        if not in_flight:
+            self.request_image(index)
+        elif not self.isRunning():
             self.start()
 
     def invalidate(self):
@@ -403,8 +422,15 @@ class SegAnyThread(QThread):
                 continue
             with self._request_lock:
                 self._completed_serial = serial
-                if self._request != request or self.isInterruptionRequested():
+                if self.isInterruptionRequested():
                     continue
+                if self._request != request:
+                    # A newer request for the very same frame still wants this
+                    # result; keep it so the next loop reuses it at once.
+                    if self._request is None or self._request[1:] != request[1:]:
+                        continue
+                    request = self._request
+                    serial = self._completed_serial = request[0]
                 # Keep completed neighbours without starting speculative GPU
                 # work while the user interacts with the current frame.
                 radius = 0 if self.segany.model_source == "sam3.1" else 1
@@ -807,6 +833,18 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self._sam_ready_timer.setSingleShot(True)
         self._sam_ready_timer.setInterval(50)
         self._sam_ready_timer.timeout.connect(self.SeganyEnabled)
+        self._canvas_state = "view"
+        # Frame undo history: post-edit snapshots of the current image only.
+        self._frame_history = []
+        self._frame_history_index = -1
+        self._restoring_history = False
+        self._history_timer = QtCore.QTimer(self)
+        self._history_timer.setSingleShot(True)
+        self._history_timer.setInterval(250)
+        self._history_timer.timeout.connect(self._commit_frame_history)
+        self._suspended_frame_shortcuts = {}
+        # Commands pressed while SAM still encodes the current image.
+        self._encode_waiters = {}
 
         # 新增 手动/自动 group选择
         self.group_select_mode = "auto"
@@ -907,6 +945,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         if model_name == "":
             self.use_segment_anything = False
+            self._refresh_model_status("none")
             self._ensure_model_manager_dialog().update_ui()
             return
 
@@ -923,6 +962,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             return
 
         # 每次都创建新的线程，避免 QThread 重启带来的潜在问题
+        self._loading_model_name = os.path.splitext(model_name)[0]
+        self._refresh_model_status("loading")
         self.sam_model_generation += 1
         self.init_segany_thread = InitSegAnyThread(self)
         self.init_segany_thread.tag.connect(self.init_sam_finish)
@@ -1019,6 +1060,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.seganythread = SegAnyThread(self)
             self.seganythread.tag.connect(self.sam_encoder_finish)
             self.seganythread.finished.connect(self.SeganyEnabled)
+            self._refresh_model_status("ready")
 
             if self.current_index is not None and self.annotation_mode == "Frame":
                 self.show_image(self.current_index)
@@ -1038,8 +1080,16 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         else:
             self._stop_gpu_monitor()
             self.use_segment_anything = False
+            self._refresh_model_status(
+                "failed" if getattr(self.init_segany_thread, "error_message", "") else "none"
+            )
             self.text_prompt_dock.setVisible(False)
             self.visual_prompt_dock.setVisible(False)
+            # Video hides Frame panels behind a restore snapshot; without a
+            # model, returning to Frame must not revive the SAM3 prompts.
+            if self._image_workspace_dock_visibility is not None:
+                for dock in (self.text_prompt_dock, self.visual_prompt_dock):
+                    self._image_workspace_dock_visibility[dock] = False
             error_message = getattr(
                 self.init_segany_thread, "error_message", ""
             )
@@ -1086,7 +1136,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             return
         color = self.STATE_COLOR_MAP.get(state, self.COLOR_STATE_DELETED)
 
+        if index == self.current_index and state == 2:
+            self.statusbar.showMessage(
+                "SAM 正在编码当前图像…"
+                if getattr(self, "_ui_language", "en") == "zh"
+                else "SAM is encoding the current image…",
+                0,
+            )
         if state == 3 and index == self.current_index:
+            self._drop_encode_waiters()
             QtWidgets.QMessageBox.warning(
                 self,
                 "warning",
@@ -1115,8 +1173,60 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if state == 1:  # 识别完
             # 如果当前图片刚识别完，需刷新segany状态
             if self.current_index == index:
+                self.statusbar.clearMessage()
                 self.SeganyEnabled()
                 self.plugin_manager_dialog.trigger_after_sam_encode_finished(index)
+                self._resume_encode_waiters(index)
+
+    def run_when_encoded(self, key, callback):
+        """Run ``callback`` once SAM has encoded the current image.
+
+        Pressing Segment (or a visual-prompt prediction) while the encoder is
+        still working used to be refused with "Wait for SAM image encoding";
+        the command now waits and runs by itself.  One waiter per ``key``;
+        changing image, display mode or model, or an encoding error drops it.
+        Returns True when the callback ran immediately.
+        """
+        index = self.current_index
+        if index is None or not self.use_segment_anything or self.segany is None:
+            return False
+        if index in self.seganythread.results_dict:
+            callback()
+            return True
+        self._encode_waiters[key] = (
+            index, self.files_list[index], self.sam_model_generation, callback
+        )
+        self.seganythread.ensure_requested(index)
+        self.statusbar.showMessage(
+            "SAM 正在编码当前图像，完成后自动继续…"
+            if getattr(self, "_ui_language", "en") == "zh"
+            else "SAM is encoding the current image; the command runs when it is ready…",
+            0,
+        )
+        return False
+
+    def has_encode_waiter(self, key):
+        return key in self._encode_waiters
+
+    def _resume_encode_waiters(self, index):
+        for key, (waiting_index, filename, generation, callback) in tuple(
+            self._encode_waiters.items()
+        ):
+            current = (
+                waiting_index == index == self.current_index
+                and 0 <= index < len(self.files_list)
+                and self.files_list[index] == filename
+                and generation == self.sam_model_generation
+            )
+            if current or waiting_index != self.current_index:
+                del self._encode_waiters[key]
+            if current:
+                callback()
+
+    def _drop_encode_waiters(self):
+        if getattr(self, "_encode_waiters", None):
+            self._encode_waiters.clear()
+            self.statusbar.clearMessage()
 
     def SeganyEnabled(self):
         """If current image has cached feature map by SAM encoder thread, enable semi-automatic annotation."""
@@ -1395,6 +1505,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.about_dialog = None
         self.model_manager_dialog = None
         self.remote_sam_dialog = None
+        self.export_dialog = None
 
         self.categories_dock_widget = CategoriesDockWidget(mainwindow=self)
         self.categories_dock.setWidget(self.categories_dock_widget)
@@ -1448,10 +1559,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.actionShow_image_workspace.setObjectName("actionFrame_mode")
         self.actionShow_video_workspace.setObjectName("actionVideo_mode")
         self._create_unified_video_actions()
+        self._create_frame_extra_actions()
         self._configure_unified_menus()
 
-        self.toolBar.setIconSize(QtCore.QSize(22, 22))
-        self.toolBar_2.setIconSize(QtCore.QSize(22, 22))
+        self.toolBar.setIconSize(QtCore.QSize(20, 20))
+        self.toolBar_2.setIconSize(QtCore.QSize(20, 20))
         self.setDockOptions(
             QtWidgets.QMainWindow.AllowNestedDocks
             | QtWidgets.QMainWindow.AllowTabbedDocks
@@ -1466,6 +1578,18 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.right_button_menu.addAction(self.actionDelete)
 
         self.setting_dialog = SettingDialog(self, self)
+
+        # The SAM model is state, not a command: show which model is loaded
+        # (or loading / failed) and open the model manager on click.
+        self._model_state = "none"
+        self._loading_model_name = ""
+        self.model_status_button = QtWidgets.QToolButton(self)
+        self.model_status_button.setObjectName("modelStatusButton")
+        self.model_status_button.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
+        self.model_status_button.setIconSize(QtCore.QSize(14, 14))
+        self.model_status_button.setFocusPolicy(QtCore.Qt.TabFocus)
+        self.model_status_button.clicked.connect(lambda _checked=False: self.model_manage())
+        self.statusbar.addPermanentWidget(self.model_status_button)
 
         self.labelGPUResource = QtWidgets.QLabel("")
         self.labelGPUResource.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
@@ -1513,6 +1637,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self._configure_compact_toolbars()
         self._configure_canvas_first_layout()
         self._bind_unified_video_shortcuts()
+        self._apply_theme_icons()
 
         self.trans = QtCore.QTranslator()
 
@@ -1912,6 +2037,57 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self._set_video_temporal_label
         )
 
+    def _create_frame_extra_actions(self):
+        """Frame commands that complement the Designer-generated actions."""
+
+        def action(name, text, shortcut, callback, enabled=False):
+            created = QtWidgets.QAction(text, self)
+            created.setObjectName(name)
+            if shortcut:
+                created.setShortcut(QtGui.QKeySequence(shortcut))
+            created.setEnabled(enabled)
+            created.triggered.connect(lambda _checked=False: callback())
+            return created
+
+        self.actionBBox = action("actionBBox", "BBox", "X",
+                                 lambda: self.scene.start_draw_bbox())
+        self.actionOBB = action("actionOBB", "Rotated box", "O",
+                                lambda: self.scene.start_draw_obb())
+        self.actionUndo = action("actionUndo", "Undo", "Ctrl+Z", self.undo_frame_edit)
+        self.actionRedo = action("actionRedo", "Redo", "Ctrl+Y", self.redo_frame_edit)
+        self.actionExport = action("actionExport", "Export…", "Ctrl+Shift+E",
+                                   self.export_annotations, enabled=True)
+        self.actionImport = action("actionImport", "Import…", "",
+                                   self.import_annotations, enabled=True)
+        # Box tools follow the polygon tool's availability (mode, display,
+        # editability), which the scene already maintains.
+        self.actionPolygon.changed.connect(self._mirror_drawing_actions)
+
+        self.menuTheme = QtWidgets.QMenu("Theme", self)
+        self.menuTheme.setObjectName("menuTheme")
+        self.theme_action_group = QtWidgets.QActionGroup(self)
+        self.theme_action_group.setExclusive(True)
+        self._theme_actions = {}
+        for key, _chinese, english in available_themes():
+            theme_action = QtWidgets.QAction(english, self)
+            theme_action.setObjectName("actionTheme_{}".format(key))
+            theme_action.setCheckable(True)
+            theme_action.setData(key)
+            theme_action.setChecked(key == active_theme())
+            theme_action.triggered.connect(
+                lambda _checked=False, key=key: self.change_theme(key)
+            )
+            self.theme_action_group.addAction(theme_action)
+            self.menuTheme.addAction(theme_action)
+            self._theme_actions[key] = theme_action
+
+    def _mirror_drawing_actions(self):
+        enabled = self.actionPolygon.isEnabled()
+        for action in (self.actionBBox, self.actionOBB):
+            if action.isEnabled() != enabled:
+                action.setEnabled(enabled)
+        self._update_history_actions()
+
     def _configure_unified_menus(self):
         """Expose image, temporal and tracking capabilities as peers."""
 
@@ -1950,6 +2126,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.menuFile.clear()
         self.file_image_heading = self._add_file_menu_heading("Image")
         self.menuFile.addAction(self.actionImages_dir)
+        self.menuRecent = QtWidgets.QMenu("Recent folders", self.menuFile)
+        self.menuRecent.setObjectName("menuRecent")
+        self.menuRecent.aboutToShow.connect(self._rebuild_recent_menu)
+        self.menuFile.addMenu(self.menuRecent)
         self.menuFile.addAction(self.actionLabel_dir)
         self.menuFile.addSeparator()
         self.file_video_heading = self._add_file_menu_heading("Video")
@@ -1962,7 +2142,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.menuFile.addSeparator()
         self.file_general_heading = self._add_file_menu_heading("General")
         self.menuFile.addAction(self.actionSave)
+        self.menuFile.addAction(self.actionExport)
+        self.menuFile.addAction(self.actionImport)
         self.menuFile.addAction(self.actionSetting)
+        self.menuFile.addAction(self.actionShortcut)
         self.menuFile.addAction(self.actionExit)
 
         self.menuNavigate.addAction(self.actionPrev_image)
@@ -1972,10 +2155,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.menuNavigate.addAction(self.actionNext_group)
 
         self.menuEdit.clear()
+        self.menuEdit.addAction(self.actionUndo)
+        self.menuEdit.addAction(self.actionRedo)
+        self.menuEdit.addSeparator()
         for action in (
+            self.actionPolygon,
+            self.actionBBox,
+            self.actionOBB,
             self.actionSegment_anything_point,
             self.actionSegment_anything_box,
-            self.actionPolygon,
             self.actionRepaint,
         ):
             self.menuEdit.addAction(action)
@@ -1987,7 +2175,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.actionEdit,
             self.actionCopy,
             self.actionDelete,
-            self.actionSave,
             self.actionTo_top,
             self.actionTo_bottom,
         ):
@@ -2016,7 +2203,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.menuTimelineZoom.menuAction(),
             None,
             self.actionTemporal_templates,
-            self.actionTemporal_import_templates,
             None,
             self.actionTemporal_edit,
             self.actionTemporal_delete,
@@ -2024,11 +2210,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.actionTemporal_redo,
             None,
             self.actionTemporal_validate,
-            self.actionTemporal_import,
-            self.actionTemporal_export,
             self.actionVideo_rebuild_index,
             self.actionVideo_cancel_task,
         ):
+            # Template/annotation file import and export live in File > Video.
             self.menuTemporal.addSeparator() if action is None else self.menuTemporal.addAction(action)
 
         self.menuTracking.addAction(self.actionTracking_start)
@@ -2036,6 +2221,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.menuTracking.addAction(self.actionTracking_rollback)
 
         self.menuView.clear()
+        self.menuMode = self.menuView.addMenu("Mode")
+        self.menuMode.setObjectName("menuMode")
+        self.menuMode.addAction(self.actionShow_video_workspace)
+        self.menuMode.addAction(self.actionShow_image_workspace)
         self.menuDisplay = self.menuView.addMenu("显示")
         self.menuDisplay.addAction(self.actionVisible)
         self.menuDisplay.addAction(self.actionBit_map)
@@ -2046,6 +2235,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.menuCapture = self.menuView.addMenu("截图")
         self.menuCapture.addAction(self.actionScene_shot)
         self.menuCapture.addAction(self.actionWindow_shot)
+        self.menuView.addSeparator()
+        self.menuView.addMenu(self.menuTheme)
+        self.menuView.addAction(self.actionLanguage)
 
         self.menuSAM_model.clear()
         self.menuSAM_model.addAction(self.actionModel_manage)
@@ -2066,8 +2258,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.menuAbout.clear()
         for action in (
-            self.actionLanguage,
-            self.actionShortcut,
             self.actionDocs,
             self.actionCreate_a_desktop_shortcut,
         ):
@@ -2263,6 +2453,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         )
         for shortcut in getattr(self, "_video_application_shortcuts", ()):
             shortcut.setEnabled(usable)
+        self._suspend_conflicting_frame_shortcuts(active)
 
         # Space is also the standalone image bitmap shortcut.  Suspend only
         # that key binding while a video Case owns transport, leaving the
@@ -2274,6 +2465,30 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         elif self._suspended_bitmap_shortcut is not None:
             self.actionBit_map.setShortcut(self._suspended_bitmap_shortcut)
             self._suspended_bitmap_shortcut = None
+
+    def _suspend_conflicting_frame_shortcuts(self, active):
+        """Frame keys equal to a video key (O, Ctrl+Z) yield while video owns keys.
+
+        Two enabled shortcuts with the same sequence are ambiguous in Qt and
+        neither fires, so the frame binding is parked and restored later.
+        """
+        suspended = self._suspended_frame_shortcuts
+        if not active:
+            for action, sequence in tuple(suspended.items()):
+                action.setShortcut(sequence)
+            suspended.clear()
+            return
+        video_keys = {
+            shortcut.key().toString()
+            for shortcut in getattr(self, "_video_application_shortcuts", ())
+        }
+        for action in (self.actionOBB, self.actionUndo, self.actionRedo):
+            if action in suspended:
+                continue
+            sequence = action.shortcut()
+            if not sequence.isEmpty() and sequence.toString() in video_keys:
+                suspended[action] = sequence
+                action.setShortcut(QtGui.QKeySequence())
 
     def _activate_unified_video_shortcut(self, method_name, *arguments):
         if (
@@ -2323,34 +2538,21 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         return button
 
     def _configure_compact_toolbars(self):
-        """Expose one case workflow, grouped by semantic separators."""
+        """Two semantic rows: frame editing first, video and output second."""
 
         self.toolBar.clear()
         self.toolBar_2.clear()
         self.toolBar.setMovable(False)
         self.toolBar_2.setMovable(False)
 
-        self.mode_tools_button = self._make_tool_menu(
-            "Mode: Frame",
-            [self.actionShow_video_workspace, self.actionShow_image_workspace],
-            "modeToolMenu",
+        # Mode is a two-segment switch; project locations live in File.
+        self.mode_segment = ModeSegment(
+            self.actionShow_video_workspace, self.actionShow_image_workspace, self
         )
-        self.mode_tools_button.setAccessibleName("Mode: Frame / Video")
-        self.toolBar.addWidget(self.mode_tools_button)
-        self.project_tools_button = self._make_tool_menu(
-            "项目",
-            [
-                self.actionLabel_dir,
-                self.actionVideo_output_root,
-                self.actionVideo_relink,
-            ],
-            "primaryToolMenu",
-        )
-        self.project_tools_button.setAccessibleName("项目目录与媒体关联")
-        self.menuProjectLocations = self.project_tools_button.menu()
-        self.menuProjectLocations.setObjectName("menuProjectLocations")
-        self.workspace_tools_button = self.mode_tools_button
-        self.toolBar.addWidget(self.project_tools_button)
+        self.mode_segment.setAccessibleName("Mode: Frame")
+        self.mode_tools_button = self.mode_segment
+        self.workspace_tools_button = self.mode_segment
+        self.toolBar.addWidget(self.mode_segment)
         self.annotate_video_frame_button = self._make_action_button(
             self.actionAnnotate_current_video_frame, "annotateVideoFrameButton"
         )
@@ -2369,6 +2571,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.toolBar.addSeparator()
         self._frame_annotation_actions = (
             self.actionPolygon,
+            self.actionBBox,
             self.actionSegment_anything_point,
             self.actionSegment_anything_box,
             self.actionRepaint,
@@ -2382,8 +2585,14 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.toolBar.addAction(self.actionFinish)
         self.toolBar.addAction(self.actionCancel)
         self.toolBar.addAction(self.actionSave)
+        self.toolBar.addAction(self.actionExport)
+        self.export_tool_button = self.toolBar.widgetForAction(self.actionExport)
+        self.export_tool_button.setObjectName("exportToolButton")
+        self.export_tool_button.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         self.toolBar.addSeparator()
-
+        self.toolBar.addAction(self.actionUndo)
+        self.toolBar.addAction(self.actionRedo)
+        self.toolBar.addSeparator()
         self.toolBar.addAction(self.actionFit_window)
 
         # Retain the retired direct-write tracking menu object for plugin/API
@@ -2402,6 +2611,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.image_more_button = self._make_tool_menu(
             "帧工具",
             [
+                self.actionOBB,
+                None,
                 self.actionBackspace,
                 self.actionEdit,
                 self.actionCopy,
@@ -2491,23 +2702,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         )
         self.transaction_tracking_button.setAccessibleName("事务化视频追踪菜单")
         self.toolBar_2.addWidget(self.transaction_tracking_button)
-        self.toolBar_2.addSeparator()
-        self.toolBar_2.addAction(self.actionModel_manage)
-        self.application_more_button = self._make_tool_menu(
-            "应用",
-            [
-                self.actionRemote_SAM,
-                self.actionPlugins,
-                self.actionSetting,
-                self.actionShortcut,
-                self.actionLanguage,
-                None,
-                self.actionDocs,
-                self.actionAbout,
-            ],
-        )
-        self.application_more_button.setAccessibleName("应用菜单")
-        self.toolBar_2.addWidget(self.application_more_button)
+        # Settings, theme, language, plugins and help live in the menu bar;
+        # the SAM model is a status-bar indicator.  This row is video-only.
         self.toolBar_2.setMaximumWidth(16777215)
 
         self._image_workspace_actions = tuple(
@@ -2519,6 +2715,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.actionSegment_anything_point,
                 self.actionSegment_anything_box,
                 self.actionPolygon,
+                self.actionBBox,
+                self.actionOBB,
                 self.actionRepaint,
                 self.actionVideo_segment,
                 self.actionVideo_segment_once,
@@ -2526,6 +2724,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.actionBackspace,
                 self.actionFinish,
                 self.actionCancel,
+                self.actionUndo,
+                self.actionRedo,
                 self.actionEdit,
                 self.actionCopy,
                 self.actionSave,
@@ -2637,7 +2837,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.insertToolBarBreak(self.toolBar_2)
         self.toolBar.show()
         self.toolBar_2.setMaximumWidth(16777215)
-        self.toolBar_2.show()
+        self._sync_video_toolbar()
         self.addToolBar(
             QtCore.Qt.BottomToolBarArea, self.video_transport_toolbar
         )
@@ -2760,7 +2960,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             required = minimum + scroll.verticalScrollBar().sizeHint().width() + 8
             right_docks.append(dock)
             required_widths.append(required)
-        signature = (self.width(), self.devicePixelRatioF(), tuple(zip(right_docks, required_widths)))
+        tab_width = self._right_dock_tab_width()
+        if right_docks and tab_width:
+            # Prefer shrinking the canvas over hiding inspector tabs.
+            required_widths.append(tab_width)
+            right_docks_for_signature = right_docks + [None]
+        else:
+            right_docks_for_signature = right_docks
+        signature = (self.width(), self.devicePixelRatioF(),
+                     tuple(zip(right_docks_for_signature, required_widths)))
         if signature == self._inspector_width_signature:
             return  # Keep a user's splitter adjustment until the available space changes.
         self._inspector_width_signature = signature
@@ -2776,16 +2984,58 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         active_dock = next((dock for dock in right_docks if not dock.visibleRegion().isEmpty()), right_docks[0])
         self.resizeDocks([active_dock], [preferred], QtCore.Qt.Horizontal)
 
+    def _right_dock_tab_width(self):
+        """Width that shows every tab of the right inspector without arrows."""
+        widest = 0
+        area_left = self.width() // 2
+        for bar in self.findChildren(QtWidgets.QTabBar, options=QtCore.Qt.FindDirectChildrenOnly):
+            if bar.count() < 2 or not bar.isVisible() or bar.geometry().center().x() < area_left:
+                continue
+            total = sum(bar.tabSizeHint(index).width() for index in range(bar.count()))
+            widest = max(widest, total + 6)
+        return widest
+
     def _adapt_frame_toolbar(self):
-        """Keep drawing tools directly reachable when the window is narrow."""
-        style = (QtCore.Qt.ToolButtonTextBesideIcon if self.width() >= 1100
-                 else QtCore.Qt.ToolButtonIconOnly)
-        for action in getattr(self, "_frame_annotation_actions", ()):
-            button = self.toolBar.widgetForAction(action)
-            if button is not None and button.toolButtonStyle() != style:
-                button.setMinimumWidth(0)
-                button.setToolButtonStyle(style)
-                button.setMinimumWidth(button.sizeHint().width())
+        """Label the drawing tools first, then Export, when the row fits.
+
+        Narrow windows fall back to icons with tooltips; the drawing tools
+        keep their labels longer than Export because they are used constantly.
+        """
+        drawing = [self.toolBar.widgetForAction(action)
+                   for action in getattr(self, "_frame_annotation_actions", ())]
+        drawing = [button for button in drawing if button is not None]
+        export = (self.toolBar.widgetForAction(self.actionExport)
+                  if hasattr(self, "actionExport") else None)
+        if not drawing:
+            return
+
+        def apply(buttons, style):
+            for button in buttons:
+                if button.toolButtonStyle() != style:
+                    button.setMinimumWidth(0)
+                    button.setToolButtonStyle(style)
+                    button.setMinimumWidth(button.sizeHint().width())
+
+        def fits():
+            needed = 24
+            for action in self.toolBar.actions():
+                if not action.isVisible():
+                    continue
+                if action.isSeparator():
+                    needed += 13
+                    continue
+                widget = self.toolBar.widgetForAction(action)
+                if widget is not None:
+                    needed += widget.sizeHint().width() + self.toolBar.layout().spacing()
+            return needed <= self.width()
+
+        labelled, icons = QtCore.Qt.ToolButtonTextBesideIcon, QtCore.Qt.ToolButtonIconOnly
+        others = [export] if export is not None else []
+        for drawing_style, other_style in ((labelled, labelled), (labelled, icons), (icons, icons)):
+            apply(drawing, drawing_style)
+            apply(others, other_style)
+            if fits():
+                break
 
     def _translate_canvas_first_layout(self, language):
         is_zh = language == "zh"
@@ -2806,7 +3056,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.video_transport_toolbar.setAccessibleName(
             "共享视频播放控制" if is_zh else "Shared video transport"
         )
-        self.temporal_dock.setWindowTitle("视频标注" if is_zh else "Video annotation")
+        self.temporal_dock.setWindowTitle("视频" if is_zh else "Video")
         self.timeline_dock.setWindowTitle(
             "视频时间轴" if is_zh else "Video timeline"
         )
@@ -2867,7 +3117,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.annos_dock_widget.setEnabled(editable and self.scene.mode in (STATUSMode.VIEW, STATUSMode.EDIT))
         if not editable:
             for action in (
-                self.actionPolygon, self.actionRepaint, self.actionSegment_anything_point,
+                self.actionPolygon, self.actionBBox, self.actionOBB,
+                self.actionUndo, self.actionRedo,
+                self.actionRepaint, self.actionSegment_anything_point,
                 self.actionSegment_anything_box, self.actionEdit, self.actionCopy,
                 self.actionDelete, self.actionTo_top, self.actionTo_bottom,
                 self.actionUnion, self.actionSubtract, self.actionIntersect, self.actionExclude,
@@ -2881,6 +3133,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         navigating = index is not None and self.scene.mode == STATUSMode.VIEW
         self.actionPrev_image.setEnabled(navigating and index > 0)
         self.actionNext_image.setEnabled(navigating and index < len(self.files_list) - 1)
+        self._mirror_drawing_actions()
         self._update_tracking_action_safety()
 
     def _update_tracking_action_safety(self):
@@ -2897,6 +3150,288 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if hasattr(self, "tracking_tools_button"):
             self.tracking_tools_button.setEnabled(False)
             self.tracking_tools_button.setVisible(False)
+
+    # ------------------------------------------------------------ themes
+    def _apply_theme(self, key):
+        application = QtWidgets.QApplication.instance()
+        if application is not None:
+            apply_workbench_theme(application, key)
+
+    def _sync_theme_actions(self):
+        current = active_theme()
+        for key, action in getattr(self, "_theme_actions", {}).items():
+            action.setChecked(key == current)
+
+    def change_theme(self, key):
+        """Switch the bundled theme at runtime and remember it."""
+        key = normalize_theme(key)
+        if key != active_theme():
+            self._apply_theme(key)
+        self.cfg["software"]["theme"] = key
+        self._sync_theme_actions()
+        self._apply_theme_icons()
+        workspace = self.video_annotation_workspace
+        if workspace is not None:
+            workspace.update()
+            for child in workspace.findChildren(QtWidgets.QWidget):
+                child.update()
+        self._inspector_width_signature = None
+        self._schedule_inspector_width()
+        self.save_software_cfg()
+
+    def _apply_theme_icons(self):
+        apply_action_icons(self)
+        if hasattr(self, "mode_segment"):
+            self.mode_segment.apply_icons()
+        for button, glyph in (
+            (getattr(self, "image_more_button", None), "grid"),
+            (getattr(self, "temporal_tools_button", None), "timeline"),
+            (getattr(self, "transaction_tracking_button", None), "crosshair"),
+        ):
+            if button is not None:
+                button.setIcon(icon_for(glyph))
+                button.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
+        model_button = getattr(self, "model_status_button", None)
+        if model_button is not None:
+            model_button.setIcon(icon_for("chip"))
+        menu_theme = getattr(self, "menuTheme", None)
+        if menu_theme is not None:
+            menu_theme.setIcon(icon_for("palette"))
+        menu_recent = getattr(self, "menuRecent", None)
+        if menu_recent is not None:
+            menu_recent.setIcon(icon_for("files"))
+        workspace = self.video_annotation_workspace
+        if workspace is not None:
+            for name, glyph in (("back_button", "step-back"), ("forward_button", "step-forward"),
+                                ("play_button", "play")):
+                button = getattr(workspace, name, None)
+                if button is not None:
+                    button.setIcon(icon_for(glyph))
+
+    # ------------------------------------------------------------ model indicator
+    def _refresh_model_status(self, state=None):
+        button = getattr(self, "model_status_button", None)
+        if button is None:
+            return
+        if state is not None:
+            self._model_state = state
+        state = self._model_state
+        is_zh = getattr(self, "_ui_language", "en") == "zh"
+        segany = getattr(self, "segany", None)
+        loaded = ""
+        if segany is not None and getattr(segany, "checkpoint", None):
+            loaded = os.path.splitext(os.path.basename(segany.checkpoint))[0]
+        if state == "ready":
+            text = "SAM · {}".format(loaded or "?")
+            tip = ("当前模型：{}\n点击管理或切换模型" if is_zh
+                   else "Loaded model: {}\nClick to manage or switch models").format(loaded)
+            if getattr(self, "use_remote_sam", False):
+                text += " (remote)"
+        elif state == "loading":
+            text = ("SAM 加载中：{}…" if is_zh else "Loading SAM: {}…").format(self._loading_model_name)
+            tip = "正在加载模型" if is_zh else "The model is loading"
+        elif state == "failed":
+            text = "SAM 加载失败" if is_zh else "SAM failed to load"
+            tip = "点击打开模型管理" if is_zh else "Click to open the model manager"
+        else:
+            text = "未加载 SAM 模型" if is_zh else "No SAM model"
+            tip = ("点击选择或下载模型；未加载模型时仍可手动标注。" if is_zh
+                   else "Click to choose or download a model; manual annotation works without one.")
+        button.setText(text)
+        button.setToolTip(tip)
+        button.setStatusTip(tip)
+        if button.property("modelState") != state:
+            button.setProperty("modelState", state)
+            button.style().unpolish(button)
+            button.style().polish(button)
+
+    # ------------------------------------------------------------ status pill
+    def set_canvas_state(self, state):
+        """Record the canvas editor state (view/create/edit/repaint)."""
+        self._canvas_state = state
+        self._refresh_mode_state()
+
+    def _refresh_mode_state(self):
+        label = getattr(self, "modeState", None)
+        if label is None:
+            return
+        is_zh = getattr(self, "_ui_language", "en") == "zh"
+        if self.annotation_mode == "Video":
+            text = "视频预览" if is_zh else "Video preview"
+            state = "video"
+        else:
+            state = getattr(self, "_canvas_state", "view")
+            names = {
+                "view": ("浏览", "View"),
+                "create": ("绘制", "Draw"),
+                "edit": ("编辑", "Edit"),
+                "repaint": ("重绘", "Repaint"),
+            }
+            chinese, english = names.get(state, names["view"])
+            if self._video_frame_belongs_to_active_project():
+                prefix = "视频帧" if is_zh else "Video frame"
+            else:
+                prefix = "帧" if is_zh else "Frame"
+            text = "{} · {}".format(prefix, chinese if is_zh else english)
+        label.setText(text)
+        if label.property("canvasState") != state:
+            label.setProperty("canvasState", state)
+            label.style().unpolish(label)
+            label.style().polish(label)
+
+    # ------------------------------------------------------------ export
+    def import_annotations(self):
+        """Import another dataset format into an IVAS label folder."""
+        self.export_annotations(tab=1)
+
+    def export_annotations(self, tab=0):
+        """Export the current label directory in a chosen dataset format."""
+        from IVAS.widgets.export_dialog import ExportDialog
+
+        if self.current_label is not None and not self.saved:
+            if self.annotation_mode == "Frame" and self.scene.mode == STATUSMode.VIEW:
+                try:
+                    self.save()
+                except Exception as error:
+                    QtWidgets.QMessageBox.warning(self, "Save failed", str(error))
+                    return
+        dialog = self._ensure_dialog("export_dialog", ExportDialog, self, self)
+        dialog.prepare()
+        dialog.tabs.setCurrentIndex(tab)
+        dialog.show()
+        dialog.raise_()
+
+    # ------------------------------------------------------------ frame history
+    def _frame_snapshot(self):
+        snapshot = []
+        for polygon in self.polygons:
+            try:
+                obj = polygon.to_object()
+            except Exception:
+                obj = None
+            if obj is not None:
+                snapshot.append(obj.to_dict())
+        return snapshot
+
+    def _clear_frame_history(self):
+        self._history_timer.stop()
+        self._frame_history = []
+        self._frame_history_index = -1
+        self._update_history_actions()
+
+    def _reset_frame_history(self):
+        self._history_timer.stop()
+        if self.current_label is None or not self.can_be_annotated:
+            self._clear_frame_history()
+            return
+        self._frame_history = [self._frame_snapshot()]
+        self._frame_history_index = 0
+        self._update_history_actions()
+
+    def _schedule_frame_history(self):
+        """Record discrete edits at once; coalesce a drag until mouse release."""
+        if self._restoring_history or not self.load_finished or not self._frame_history:
+            return
+        if QtWidgets.QApplication.mouseButtons() == QtCore.Qt.NoButton:
+            self._commit_frame_history()
+            return
+        self._history_timer.start()
+        self._update_history_actions()
+
+    def flush_frame_history(self):
+        if self._history_timer.isActive():
+            self._commit_frame_history()
+
+    def _commit_frame_history(self):
+        self._history_timer.stop()
+        if not self._frame_history or self._restoring_history:
+            return
+        snapshot = self._frame_snapshot()
+        if snapshot != self._frame_history[self._frame_history_index]:
+            del self._frame_history[self._frame_history_index + 1:]
+            self._frame_history.append(snapshot)
+            if len(self._frame_history) > 100:
+                del self._frame_history[0]
+            self._frame_history_index = len(self._frame_history) - 1
+        self._update_history_actions()
+
+    def _frame_history_ready(self):
+        return bool(
+            self.load_finished
+            and self._frame_history
+            and self.annotation_mode == "Frame"
+            and self.scene._frame_is_editable()
+            and self.scene.mode in (STATUSMode.VIEW, STATUSMode.EDIT)
+        )
+
+    def _update_history_actions(self):
+        if not hasattr(self, "actionUndo"):
+            return
+        ready = self._frame_history_ready()
+        pending = self._history_timer.isActive()
+        self.actionUndo.setEnabled(ready and (self._frame_history_index > 0 or pending))
+        self.actionRedo.setEnabled(
+            ready and not pending
+            and self._frame_history_index < len(self._frame_history) - 1
+        )
+
+    def undo_frame_edit(self):
+        if self.scene.mode == STATUSMode.CREATE:
+            self.scene.backspace()
+            return
+        if not self._frame_history_ready():
+            return
+        self._commit_frame_history()
+        if self._frame_history_index <= 0:
+            return
+        self._frame_history_index -= 1
+        self._restore_frame_snapshot(self._frame_history[self._frame_history_index])
+
+    def redo_frame_edit(self):
+        if not self._frame_history_ready():
+            return
+        self._commit_frame_history()
+        if self._frame_history_index >= len(self._frame_history) - 1:
+            return
+        self._frame_history_index += 1
+        self._restore_frame_snapshot(self._frame_history[self._frame_history_index])
+
+    def _restore_frame_snapshot(self, snapshot):
+        """Rebuild the canvas shapes from one history snapshot."""
+        if self.scene.mode == STATUSMode.EDIT:
+            for item in self.scene.selectedItems():
+                item.setSelected(False)
+            self.scene.change_mode_to_view()
+        self._restoring_history = True
+        try:
+            self.scene.selected_polygons_list.clear()
+            for polygon in list(self.polygons):
+                polygon.delete()
+                if polygon.scene() is self.scene:
+                    self.scene.removeItem(polygon)
+            self.polygons.clear()
+            for data in snapshot:
+                obj = Object.from_dict(data)
+                polygon = shape_for_object(obj)
+                self._setup_polygon_alpha(polygon)
+                self.scene.addItem(polygon)
+                polygon.load_object(obj)
+                self.polygons.append(polygon)
+            self.annos_dock_widget.update_listwidget()
+            self.update_group_display()
+            self.scene.update_mask()
+            self.set_saved_state(False)
+        finally:
+            self._restoring_history = False
+        self._update_history_actions()
+        self.statusbar.showMessage(
+            "{} {}/{}".format(
+                "标注历史" if getattr(self, "_ui_language", "en") == "zh" else "Annotation history",
+                self._frame_history_index + 1,
+                len(self._frame_history),
+            ),
+            2000,
+        )
 
     def statusbar_change_status(self, is_message: bool = True):
         self.labelGPUResource.setVisible(is_message)
@@ -2942,7 +3477,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             "about_dialog", "shortcut_dialog", "Converter_dialog",
             "video2frames_dialog", "auto_segment_dialog",
             "annos_validator_dialog", "process_exif_dialog",
-            "setting_dialog",
+            "setting_dialog", "export_dialog",
         )
         for _name in _widget_names:
             _widget = getattr(self, _name, None)
@@ -3018,9 +3553,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.menuTimelineZoom.setTitle("时间轴缩放" if is_zh else "Timeline zoom")
         self.menuTracking.setTitle("事务追踪" if is_zh else "Transactional tracking")
         self.menuView.setTitle("视图" if is_zh else "View")
-        self.menuProjectLocations.setTitle(
-            "项目位置" if is_zh else "Project locations"
-        )
+        self.menuTheme.setTitle("主题" if is_zh else "Theme")
+        self.menuMode.setTitle("模式" if is_zh else "Mode")
+        self.menuRecent.setTitle("最近打开的目录" if is_zh else "Recent folders")
+        for key, chinese, english in available_themes():
+            self._theme_actions[key].setText(chinese if is_zh else english)
         self.menuTemporalImport.setTitle("导入视频标注" if is_zh else "Import video annotations")
         self.menuTemporalExport.setTitle("导出视频标注" if is_zh else "Export video annotations")
         self.menuDisplay.setTitle("显示" if is_zh else "Display")
@@ -3028,6 +3565,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.menuCapture.setTitle("截图" if is_zh else "Capture")
 
         set_action_text(self.actionImages_dir, "打开图像目录…", "Open image directory…")
+        set_action_text(self.actionSetting, "设置…", "Settings…")
+        set_action_text(self.actionShortcut, "快捷键…", "Keyboard shortcuts…")
         set_action_text(self.actionLabel_dir, "设置帧标签目录…", "Set frame label directory…")
         set_action_text(self.actionSave, "保存当前工作", "Save current work")
         self.actionSave.setStatusTip(
@@ -3101,40 +3640,67 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         )
         for action, chinese, english in (
             (self.actionPolygon, "多边形", "Polygon"),
+            (self.actionBBox, "矩形框", "BBox"),
             (self.actionSegment_anything_point, "SAM 点", "SAM point"),
             (self.actionSegment_anything_box, "SAM 框", "SAM box"),
             (self.actionRepaint, "重绘", "Repaint"),
         ):
             action.setIconText(chinese if is_zh else english)
+        for action, chinese, english, chinese_tip, english_tip in (
+            (self.actionBBox, "矩形框 (BBox)", "Bounding box",
+             "两次点击或拖动绘制轴对齐矩形框；按住 Shift 绘制正方形。",
+             "Draw an axis-aligned box with two clicks or one drag; hold Shift for a square."),
+            (self.actionOBB, "旋转框 (OBB)", "Rotated box (OBB)",
+             "三次点击绘制旋转矩形；选中后按 N / M 旋转。",
+             "Draw a rotated box with three clicks; rotate a selected box with N / M."),
+            (self.actionUndo, "撤销", "Undo",
+             "撤销当前图像的上一步标注修改。", "Undo the last annotation change on this image."),
+            (self.actionRedo, "重做", "Redo",
+             "重做当前图像被撤销的标注修改。", "Redo the annotation change that was undone."),
+            (self.actionExport, "导出数据集…", "Export dataset…",
+             "将标注导出为 COCO、YOLO、LabelMe、VOC 或 IVAS 格式。",
+             "Export annotations as COCO, YOLO, LabelMe, VOC or IVAS."),
+            (self.actionImport, "导入数据集…", "Import dataset…",
+             "将 COCO、YOLO、LabelMe 或 VOC 标注导入为 IVAS 标签目录。",
+             "Import COCO, YOLO, LabelMe or VOC annotations into an IVAS label folder."),
+        ):
+            action.setText(chinese if is_zh else english)
+            tip = chinese_tip if is_zh else english_tip
+            shortcut = action.shortcut().toString(QtGui.QKeySequence.NativeText)
+            action.setStatusTip(tip)
+            action.setToolTip("{} ({})".format(tip, shortcut) if shortcut else tip)
+        self.actionExport.setIconText("导出" if is_zh else "Export")
+        self.mode_segment.set_labels("视频" if is_zh else "Video", "帧" if is_zh else "Frame")
         self.image_more_button.setText("帧工具" if is_zh else "Frame tools")
-        self.project_tools_button.setText("项目" if is_zh else "Project")
         self.temporal_toolbar_label.setText("视频：" if is_zh else "Video:")
         self.temporal_tools_button.setText("视频工具" if is_zh else "Video tools")
         self.transaction_tracking_button.setText(
             "事务追踪" if is_zh else "Tracking"
         )
-        self.application_more_button.setText("应用" if is_zh else "Application")
+        self._refresh_model_status()
         self.saturation_menu_label.setText("饱和度" if is_zh else "Saturation")
-        in_video_workspace = (
-            self.video_annotation_workspace is not None
-            and self.workspace_stack.currentWidget() is self.video_annotation_workspace
-        )
-        video_frame_context = bool(
-            self._video_frame_belongs_to_active_project()
-        )
-        if in_video_workspace:
-            state_text = "视频预览" if is_zh else "Video preview"
-        elif video_frame_context:
-            state_text = "视频帧 + 时序" if is_zh else "Video frame + timeline"
-        else:
-            state_text = "图像" if is_zh else "Image"
-        self.modeState.setText(state_text)
+        self._refresh_mode_state()
         if self.video_annotation_workspace is not None:
             self.video_annotation_workspace.set_language(language)
         # retranslateUi() restores generated shortcut literals; immediately
         # reapply the user's configured keys (including unified Ctrl+S).
         self.load_actions_shortcut()
         self._sync_video_context_actions()
+        # retranslateUi() restored the Designer icons (and the language flag).
+        self._apply_theme_icons()
+        # retranslateUi() also reset the window title; restore the media
+        # context, including the unsaved marker of the current frame.
+        in_video_workspace = self.annotation_mode == "Video"
+        video_path = (
+            self.video_annotation_workspace.video_path
+            if in_video_workspace else None
+        )
+        if video_path is not None:
+            self.setWindowTitle("{} — {}".format(video_path.name, APP_NAME))
+        elif not in_video_workspace and self.current_label is not None:
+            self.setWindowTitle("{}{} — {}".format(
+                "" if self.saved else "*", self.current_label.label_path, APP_NAME
+            ))
 
         # -----------------
 
@@ -3187,6 +3753,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if not isinstance(software_cfg, dict):
             software_cfg = {}
         self.cfg["software"] = software_cfg
+
+        theme = normalize_theme(software_cfg.get("theme"))
+        self.cfg["software"]["theme"] = theme
+        if theme != active_theme():
+            self._apply_theme(theme)
+        self._sync_theme_actions()
 
         language = software_cfg.get("language", "en")
         self.cfg["software"]["language"] = language
@@ -3306,11 +3878,22 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.categories_dock_widget.update_widget()
         self.text_prompt_dock_widget.refresh_categories()
+        self.files_dock_widget.refresh_categories()
 
         if self.current_index is not None:
             self.show_image(self.current_index)
 
-        # shortcut
+        # shortcut — new commands get defaults that also appear in the editor
+        shortcut_cfg = self.cfg.setdefault("shortcut", {})
+        if isinstance(shortcut_cfg, dict):
+            for name, key in (
+                ("actionBBox", "X"),
+                ("actionOBB", "O"),
+                ("actionUndo", "Ctrl+Z"),
+                ("actionRedo", "Ctrl+Y"),
+                ("actionExport", "Ctrl+Shift+E"),
+            ):
+                shortcut_cfg.setdefault(name, {"default_key": key, "key": key})
         self.load_actions_shortcut(default=False)
 
     def load_actions_shortcut(self, default: bool = False):
@@ -3348,9 +3931,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     and getattr(self, "_suspended_bitmap_shortcut", None) is not None):
                 self._suspended_bitmap_shortcut = qt_action.shortcut()
                 qt_action.setShortcut(QtGui.QKeySequence())
+            suspended = getattr(self, "_suspended_frame_shortcuts", {})
+            if qt_action in suspended:
+                suspended[qt_action] = qt_action.shortcut()
+                qt_action.setShortcut(QtGui.QKeySequence())
 
     def set_saved_state(self, is_saved: bool, *, save_now: bool = False):
         """Update dirty state, optionally saving regardless of the auto-save setting."""
+        if not is_saved:
+            self._schedule_frame_history()
         self.saved = is_saved
         if not is_saved:
             if save_now or self.cfg["software"]["auto_save"]:
@@ -3412,6 +4001,19 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             if file_name.lower().endswith(suffixs)
             or file_name.lower().endswith(".dcm")
         )
+        video_workspace = self.video_annotation_workspace
+        if video_case and video_workspace is not None and video_workspace.store is not None:
+            # frames/ also holds key-frame captures. Prev/Next may only reach
+            # linked spatial frames, which can be pinned and saved into the
+            # case; the explicitly requested frame is always kept.
+            linked = {
+                os.path.normcase(name)
+                for name in video_workspace.linked_frame_filenames(directory)
+            }
+            files = [
+                name for name in files
+                if os.path.normcase(name) in linked or name == selected_filename
+            ]
         if not files:
             QtWidgets.QMessageBox.warning(
                 self, "Warning", "No supported images found in {}".format(directory)
@@ -3450,6 +4052,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.files_dock_widget.listWidget.clear()
 
         self.files_list = files
+        # The canvas no longer matches files_list/current_index until the
+        # show_image() below; keep show_image_workspace() from refreshing it.
+        self.load_finished = False
 
         self.files_dock_widget.update_widget()
 
@@ -3481,7 +4086,45 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.show_image_workspace()
         self.show_image(self.current_index)
         self._update_tracking_action_safety()
+        if not video_case:
+            self._remember_recent_folder(self.image_root, self.label_root)
         return True
+
+    def _remember_recent_folder(self, image_root, label_root):
+        """Keep the eight most recent standalone image/label folder pairs."""
+        software = self.cfg.setdefault("software", {})
+        entry = {"images": os.path.abspath(image_root), "labels": os.path.abspath(label_root)}
+        recent = [item for item in software.get("recent_folders") or []
+                  if isinstance(item, dict) and item.get("images") != entry["images"]]
+        software["recent_folders"] = [entry] + recent[:7]
+        self.save_software_cfg()
+
+    def _rebuild_recent_menu(self):
+        menu = self.menuRecent
+        menu.clear()
+        is_zh = getattr(self, "_ui_language", "en") == "zh"
+        recent = [item for item in self.cfg.get("software", {}).get("recent_folders") or []
+                  if isinstance(item, dict) and item.get("images")]
+        for item in recent:
+            images, labels = item["images"], item.get("labels") or item["images"]
+            text = images if labels == images else "{}  →  {}".format(images, os.path.basename(labels))
+            action = menu.addAction(icon_for("folder-image"), text)
+            action.setEnabled(os.path.isdir(images))
+            action.triggered.connect(
+                lambda _checked=False, images=images, labels=labels:
+                self.load_image_directory(images, labels if os.path.isdir(labels) else None)
+            )
+        if not recent:
+            empty = menu.addAction("暂无最近目录" if is_zh else "No recent folders")
+            empty.setEnabled(False)
+        else:
+            menu.addSeparator()
+            clear = menu.addAction("清除列表" if is_zh else "Clear list")
+            clear.triggered.connect(self._clear_recent_folders)
+
+    def _clear_recent_folders(self):
+        self.cfg.setdefault("software", {})["recent_folders"] = []
+        self.save_software_cfg()
 
     def _confirm_leave_unsaved_image(self) -> bool:
         if self.scene.mode in (STATUSMode.CREATE, STATUSMode.EDIT, STATUSMode.REPAINT):
@@ -3630,9 +4273,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         mode = self.annotation_mode
         self.actionShow_video_workspace.setChecked(mode == "Video")
         self.actionShow_image_workspace.setChecked(mode == "Frame")
-        self.mode_tools_button.setText("Mode: {}".format(mode))
-        self.mode_tools_button.setAccessibleName("Mode: {}".format(mode))
-        self.modeState.setText("Mode: {}".format(mode))
+        self.mode_segment.set_mode(mode)
+        self._refresh_mode_state()
         self._adapt_frame_toolbar()
         # Embedded QWidgetActions otherwise shrink below their text width.
         # Let the toolbar overflow move secondary commands into its extension.
@@ -3642,7 +4284,14 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 if isinstance(button, QtWidgets.QToolButton):
                     button.setMinimumWidth(button.sizeHint().width())
 
+    def _sync_video_toolbar(self):
+        """The Phase/Task row appears once a video case exists (or in Video)."""
+        workspace = getattr(self, "video_annotation_workspace", None)
+        has_project = workspace is not None and workspace.store is not None
+        self.toolBar_2.setVisible(bool(has_project or self.annotation_mode == "Video"))
+
     def _sync_video_context_actions(self, *_args):
+        self._sync_video_toolbar()
         workspace = self.video_annotation_workspace
         has_project = workspace is not None and workspace.store is not None
         in_video_preview = bool(
@@ -3779,7 +4428,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 else None
             ),
         )
-        workspace.set_language(self.cfg["software"]["language"])
+        workspace.set_language(
+            getattr(self, "_ui_language", None) or self.cfg["software"]["language"]
+        )
         workspace.frame_annotation_requested.connect(
             self.open_video_frame_for_annotation
         )
@@ -3790,6 +4441,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.video_annotation_workspace = workspace
         self._attach_video_project_panels(workspace)
         self._bind_video_workspace_commands(workspace)
+        self._apply_theme_icons()
         return workspace
 
     def _remember_video_output_root(self, output_root):
@@ -3828,9 +4480,19 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             return
         try:
             workspace = self._ensure_video_workspace()
+            previous_store = workspace.store
             store = workspace.open_video(Path(filename))
         except Exception as error:
             QtWidgets.QMessageBox.critical(self, "Open video failed", str(error))
+            return
+        if (
+            previous_store is not None
+            and store is previous_store
+            and workspace.video_path != Path(filename).resolve()
+        ):
+            # The user kept the unfinished interval instead of replacing the
+            # case; a cancelled open keeps the current Mode.
+            self._sync_video_context_actions()
             return
         self.active_video_project_path = str(store.path)
         self._activate_video_workspace()
@@ -3864,6 +4526,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         workspace = self._ensure_video_workspace()
         self.scene.invalidate_mask_prediction()
         self.text_prompt_dock_widget.invalidate_prediction()
+        self._drop_encode_waiters()
         workspace.set_frame_edit_position(None)
         self._enter_video_action_scope()
         if self._image_workspace_dock_visibility is None:
@@ -3890,11 +4553,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             if workspace.video_path is not None else APP_NAME
         )
         self.actionShow_video_workspace.setChecked(True)
-        self.modeState.setText(
-            "视频预览"
-            if self.cfg["software"]["language"] == "zh"
-            else "Video preview"
-        )
+        self._refresh_mode_state()
         self._sync_video_context_actions()
         self.statusbar.showMessage("统一视频 Case：时序、帧分割与追踪均可用。", 4000)
 
@@ -3908,6 +4567,19 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self._image_workspace_dock_visibility = None
         self.toolBar.show()
         self._leave_video_action_scope()
+        if self.load_finished and self.current_index is not None:
+            if getattr(self, "_frame_reload_pending", False):
+                # Settings/categories changed while Video was shown.
+                self.show_image(self.current_index, zoomfit=False)
+            elif (
+                self.use_segment_anything
+                and self.can_be_annotated
+                and self.current_index not in self.seganythread.results_dict
+                and not (self.seganythread.isRunning()
+                         and self.seganythread.index == self.current_index)
+            ):
+                # The model loaded or changed while Video was shown.
+                self.seganythread.request_image(self.current_index)
         self._apply_frame_action_constraints()
         self.SeganyEnabled()
         self.actionShow_image_workspace.setChecked(True)
@@ -3920,12 +4592,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if video_frame_context:
             self.tabifyDockWidget(self.categories_dock, self.temporal_dock)
             self.categories_dock.raise_()
-        is_zh = self.cfg["software"]["language"] == "zh"
-        self.modeState.setText(
-            ("视频帧 + 时序" if is_zh else "Video frame + timeline")
-            if video_frame_context
-            else ("图像" if is_zh else "Image")
-        )
+        self._refresh_mode_state()
         self._update_tracking_action_safety()
         self._sync_video_context_actions()
         if self.current_label is not None:
@@ -4029,6 +4696,27 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             return
         if not self.load_finished:
             raise ValueError("Wait for the image and annotation to load before saving")
+        loaded_signature = self._loaded_frame_signature
+        disk_signature = self._frame_disk_signature()
+        if (loaded_signature is not None and disk_signature is not None
+                and loaded_signature[1] != disk_signature[1]):
+            # Tracking commit/rollback or a batch job rewrote this label after
+            # the canvas loaded it; never overwrite that silently.
+            answer = QtWidgets.QMessageBox.question(
+                self,
+                "Label changed on disk",
+                "{}\nchanged on disk after this frame was opened (for example by a "
+                "tracking commit or rollback). Overwrite it with the canvas?".format(
+                    self.current_label.label_path
+                ),
+                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.Cancel,
+                QtWidgets.QMessageBox.Cancel,
+            )
+            if answer != QtWidgets.QMessageBox.Yes:
+                raise RuntimeError(
+                    "Save cancelled: the label file changed on disk. Reopen the "
+                    "frame to load the newer annotation."
+                )
         self.current_label.objects.clear()
         for polygon in self.polygons:
             object = polygon.to_object()
@@ -4038,6 +4726,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.plugin_manager_dialog.trigger_before_annotations_save()
 
         self.current_label.save_annotation()
+        # Our own write is the new baseline, even if linking fails below.
+        self._loaded_frame_signature = self._frame_disk_signature()
         if self._video_frame_belongs_to_active_project():
             mark_saved = getattr(
                 self.video_annotation_workspace, "mark_frame_annotation_saved", None
@@ -4052,6 +4742,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.save_cfg(os.path.join(self.label_root, CATEGORY_CONFIG_NAME))
         self.set_saved_state(True)
         self._loaded_frame_signature = self._frame_disk_signature()
+        # Category filter counts follow saves even where file watching is unreliable.
+        self.files_dock_widget.refresh_index()
 
         self.plugin_manager_dialog.trigger_after_annotations_saved()
 
@@ -4086,6 +4778,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         """
         if not 0 <= index < len(self.files_list):
             return False
+        if self.annotation_mode != "Frame":
+            # Settings, category reloads and leftover shortcuts must not rebuild
+            # the hidden canvas behind Video: that re-enables frame actions and
+            # skips display-mode styling. show_image_workspace() reloads it.
+            self._frame_reload_pending = True
+            return None
+        self._frame_reload_pending = False
         file_path = os.path.join(self.image_root, self.files_list[index])
         try:
             if file_path.lower().endswith(".dcm"):
@@ -4108,6 +4807,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             return False
 
         self.text_prompt_dock_widget.invalidate_prediction()
+        self._drop_encode_waiters()
         self.reset_action()
         self.scene.cancel_draw()
         self.scene.unload_image()
@@ -4125,6 +4825,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.current_label = None
         self.load_finished = False
+        self._clear_frame_history()
         self.saved = True
         if not -1 < index < len(self.files_list):
             return
@@ -4214,10 +4915,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                             self.current_group = 1
                     except Exception as e:
                         pass
-                    if getattr(object, 'is_obb', False):
-                        polygon = OBB()
-                    else:
-                        polygon = Polygon()
+                    polygon = shape_for_object(object)
                     self._setup_polygon_alpha(polygon)
                     self.scene.addItem(polygon)
                     polygon.load_object(object)
@@ -4235,6 +4933,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 "{}".format(self.current_index + 1)
             )
             self.load_finished = True
+            self._reset_frame_history()
             self._loaded_frame_signature = self._frame_disk_signature()
             if self.annotation_mode == "Frame":
                 self._pin_video_annotation_frame()
@@ -4338,6 +5037,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if mode != self.map_mode:
             self.scene.invalidate_mask_prediction()
             self.text_prompt_dock_widget.invalidate_prediction()
+        self._drop_encode_waiters()
         self.map_mode = mode
         editable = mode == MAPMode.LABEL
         if mode == MAPMode.INSTANCE and self.instance_cmap is None:
@@ -4781,6 +5481,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self._version_check_timer.stop()
         self.scene.invalidate_mask_prediction()
         self.text_prompt_dock_widget.invalidate_prediction()
+        self._drop_encode_waiters()
         self.visual_prompt_dock_widget.invalidate_prediction()
         workers = self._running_workers()
         if workers:
@@ -5005,6 +5706,10 @@ Categories=Development;System;
         self.actionSegment_anything_point.setEnabled(False)
         self.actionSegment_anything_box.setEnabled(False)
         self.actionPolygon.setEnabled(False)
+        self.actionBBox.setEnabled(False)
+        self.actionOBB.setEnabled(False)
+        self.actionUndo.setEnabled(False)
+        self.actionRedo.setEnabled(False)
         self.actionRepaint.setEnabled(False)
         self.actionVideo_segment.setEnabled(False)
         self.actionVideo_segment_once.setEnabled(False)

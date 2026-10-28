@@ -30,6 +30,9 @@ class FusedWorkbenchTests(unittest.TestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
         window = mainwindow_module.MainWindow()
+        # Never write the user's IVAS/software.yaml or category file from tests.
+        window.save_cfg = mock.Mock()
+        window.save_software_cfg = mock.Mock()
 
         def cleanup_window():
             timer = getattr(window, "_version_check_timer", None)
@@ -124,7 +127,7 @@ class FusedWorkbenchTests(unittest.TestCase):
         self.assertIsNone(window.video_annotation_workspace)
         self.assertIsInstance(window.menuTemporal, QtWidgets.QMenu)
         self.assertIsInstance(window.menuTracking, QtWidgets.QMenu)
-        self.assertIsInstance(window.project_tools_button, QtWidgets.QToolButton)
+        self.assertFalse(hasattr(window, "project_tools_button"))
         self.assertIs(window.workspace_tools_button, window.mode_tools_button)
         self.assertIsInstance(window.temporal_lane_combo, QtWidgets.QComboBox)
         self.assertIsInstance(window.temporal_label_combo, QtWidgets.QComboBox)
@@ -208,9 +211,14 @@ class FusedWorkbenchTests(unittest.TestCase):
         public_menu_actions = set()
         for menu in self._public_menus(window):
             public_menu_actions.update(self._leaf_actions(menu))
-        project_actions = set(self._leaf_actions(window.project_tools_button.menu()))
-        self.assertTrue(project_actions.issubset(file_actions))
-        self.assertIn(window.actionVideo_output_root, project_actions)
+        location_actions = {
+            window.actionLabel_dir,
+            window.actionVideo_output_root,
+            window.actionVideo_relink,
+            window.actionExport,
+            window.actionImport,
+        }
+        self.assertTrue(location_actions.issubset(file_actions))
         for mode_action in (
             window.actionShow_image_workspace,
             window.actionShow_video_workspace,
@@ -225,7 +233,7 @@ class FusedWorkbenchTests(unittest.TestCase):
         public_menus = self._public_menus(window)
         self.assertIn(window.menuTemporal, public_menus)
         self.assertIn(window.menuTracking, public_menus)
-        self.assertIn(window.project_tools_button.menu(), public_menus)
+        self.assertIn(window.image_more_button.menu(), public_menus)
         for menu in public_menus:
             with self.subTest(menu=self._menu_name(menu)):
                 self._assert_clean_separators(menu, menu.actions())
@@ -346,10 +354,10 @@ class FusedWorkbenchTests(unittest.TestCase):
         secondary_controls = [
             action for action in secondary_actions if not action.isSeparator()
         ]
-        # Four direct drawing tools replace the former annotation dropdown;
-        # advanced temporal/tracking commands remain grouped in menus.
-        self.assertLessEqual(len(primary_controls), 15)
-        self.assertLessEqual(len(secondary_controls), 9)
+        # Five direct drawing tools (with BBox) and undo/redo replace the
+        # former Project menu; advanced commands remain grouped in menus.
+        self.assertLessEqual(len(primary_controls), 18)
+        self.assertLessEqual(len(secondary_controls), 8)
         self.assertGreaterEqual(
             sum(action.isSeparator() for action in primary_actions),
             2,
@@ -383,7 +391,8 @@ class FusedWorkbenchTests(unittest.TestCase):
             for toolbar in (window.toolBar, window.toolBar_2)
             for action in toolbar.actions()
         }
-        self.assertIn(window.project_tools_button, toolbar_widgets)
+        self.assertIn(window.mode_segment, toolbar_widgets)
+        self.assertIn(window.export_tool_button, toolbar_widgets)
         self.assertEqual(
             window.toolBarArea(window.toolBar), QtCore.Qt.TopToolBarArea
         )

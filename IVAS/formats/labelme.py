@@ -108,10 +108,17 @@ class LABELME(IVAS):
 
             shape = {}
             shape["label"] = category
-            shape["points"] = segmentation
+            if obj.shape_type == "rectangle":
+                # LabelMe rectangles are two opposite corners: top-left, bottom-right.
+                xmin, ymin, xmax, ymax = self.segmentation_bounds(segmentation)
+                shape["points"] = [[xmin, ymin], [xmax, ymax]]
+                shape["shape_type"] = "rectangle"
+            else:
+                # OBBs have no LabelMe equivalent and are kept as 4-point polygons.
+                shape["points"] = segmentation
+                shape["shape_type"] = "polygon"
             shape["group_id"] = int(group) if group is not None else None
             shape["description"] = note
-            shape["shape_type"] = "polygon"
             shape["flags"] = {}
 
             labelme_anno["shapes"].append(shape)
@@ -147,9 +154,12 @@ class LABELME(IVAS):
             used_groups = {int(shape["group_id"]) for shape in shapes if shape.get("group_id") is not None}
             next_group = max(used_groups | {0}) + 1
             for shape in shapes:
-                # 只加载多边形
-                is_polygon = shape.get("shape_type", "") == "polygon"
-                if not is_polygon:
+                # 只加载多边形和矩形
+                shape_type = shape.get("shape_type", "")
+                if shape_type not in ("polygon", "rectangle"):
+                    continue
+                points = shape.get("points", [])
+                if shape_type == "rectangle" and len(points) != 2:
                     continue
                 obj = self.ANNO.OBJ()
 
@@ -158,12 +168,18 @@ class LABELME(IVAS):
                 if obj.group is None:
                     obj.group = next_group
                     next_group += 1
-                obj.segmentation = shape.get("points", [])
+                obj.segmentation = points
                 obj.area = shape.get("area", 0)
                 obj.layer = shape.get("layer", 1)
                 obj.bbox = shape.get("bbox", [])
                 obj.iscrowd = shape.get("iscrowd", False)
                 obj.note = shape.get("description", shape.get("note", "")) or ""
+                if shape_type == "rectangle":
+                    # The two corners may be given in any order.
+                    obj = self.make_rectangle_obj(
+                        obj.category, obj.group, *self.segmentation_bounds(points),
+                        layer=obj.layer, iscrowd=obj.iscrowd, note=obj.note,
+                    )
 
                 objs.append(obj)
             anno.objs = tuple(objs)

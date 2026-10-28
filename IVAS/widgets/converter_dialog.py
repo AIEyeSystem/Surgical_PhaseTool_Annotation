@@ -207,6 +207,8 @@ class YOLOConverter(Converter, YOLO):
         self.ivas_json_root = None
 
         self.yolo2ivas = True
+        # ivas2yolo only: write "cls cx cy w h" boxes instead of polygons.
+        self.detection = False
 
     def convert(self):
         if self.yolo2ivas:
@@ -289,6 +291,16 @@ class YOLOConverter(Converter, YOLO):
 
     def ivas_to_yolo(self):
         self.message.emit(-1, -1, " " * 18 + "| -- IVAS to YOLO --")
+        self.message.emit(
+            -1,
+            -1,
+            " " * 18
+            + "| Output: {}.".format(
+                "detection boxes (cls cx cy w h)"
+                if self.detection
+                else "segmentation polygons"
+            ),
+        )
 
         # Load from IVAS-compatible annotation data.
         self.load_from_ivas()
@@ -504,10 +516,59 @@ class VOCConverterForDetection(Converter, VOCDetect):
         super(VOCConverterForDetection, self).__init__()
         self.ivas_json_root = None
         self.voc_xml_root = None
+        self.voc2ivas = False
 
     def convert(self):
-        if self.ivas_json_root is not None and self.voc_xml_root is not None:
+        if self.ivas_json_root is None or self.voc_xml_root is None:
+            return
+        if self.voc2ivas:
+            self.voc_xml_to_ivas()
+        else:
             self.ivas_to_voc_for_detection()
+
+    def voc_xml_to_ivas(self):
+        self.annos.clear()
+        self.cates = ()
+        self.message.emit(-1, -1, " " * 18 + "| -- VOC for Detection to IVAS --")
+
+        # load from voc xml
+        self.message.emit(-1, -1, " " * 18 + "| Loading from VOC xml.")
+        xml_files = [
+            file
+            for file in os.listdir(self.voc_xml_root)
+            if file.lower().endswith(".xml")
+        ]
+        num_xml_files = len(xml_files)
+        for index, file in enumerate(xml_files):
+            if self.cancel:
+                self.message.emit(-1, -1, " " * 18 + "| -- Cancel --")
+                return
+
+            name_without_suffix = self.remove_file_suffix(file)
+            self.message.emit(
+                index + 1,
+                num_xml_files,
+                "{:>8d}/{:<8d} | Loading from {}".format(
+                    index + 1, num_xml_files, file
+                ),
+            )
+            try:
+                anno = self.load_one_voc_xml(os.path.join(self.voc_xml_root, file))
+                self.annos[name_without_suffix] = anno
+            except Exception as e:
+                self.report_error(e)
+
+        # cats
+        class_set = set()
+        for _, anno in self.annos.items():
+            for obj in anno.objs:
+                class_set.add(obj.category)
+        self.cates = tuple(sorted(class_set))
+
+        # save to ivas
+        os.makedirs(self.ivas_json_root, exist_ok=True)
+        self.convert_to_ivas()
+        return True
 
     def ivas_to_voc_for_detection(self):
         self.message.emit(-1, -1, " " * 18 + "| -- IVAS to VOC for Detection --")
@@ -527,8 +588,8 @@ class VOCConverterForDetection(Converter, VOCDetect):
                 self.message.emit(
                     index + 1,
                     num_annos,
-                    "{:>8d}/{:<8d} | Save voc png to {}".format(
-                        index + 1, num_annos, name_without_suffix + ".png"
+                    "{:>8d}/{:<8d} | Save voc xml to {}".format(
+                        index + 1, num_annos, name_without_suffix + ".xml"
                     ),
                 )
                 self.save_one_voc_xml(anno, xml_path)

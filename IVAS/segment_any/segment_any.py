@@ -327,6 +327,84 @@ class SegAny:
         ):
             return self.predictor.predict_with_text_prompts(list(prompts))
 
+    def predict_with_visual_prompt(
+        self,
+        image,
+        boxes: list,
+        box_labels: list,
+        points: list = (),
+        point_labels: list = (),
+    ):
+        """SAM3/SAM3.1 visual (exemplar) prompting with boxes and/or points.
+
+        Boxes go straight to the concept detector. SAM3 ignores points there,
+        so each point is first resolved to the instance under it with the
+        interactive point predictor and its bounding box becomes an exemplar
+        (see ``IVAS.segment_any.visual_prompt``). Negative points also drop any
+        result containing them; a positive point whose object was not found
+        contributes its own instance mask.
+
+        Arguments:
+            image: PIL RGB image for SAM3; ``None`` for SAM 3.1, which uses the
+                cached image state.
+            boxes: [[xmin, ymin, xmax, ymax], ...] exemplar boxes.
+            box_labels: [bool, ...] True for positive exemplars.
+            points: [[x, y], ...] exemplar clicks.
+            point_labels: [bool, ...] True for positive clicks.
+
+        The predictor's image state must already describe ``image`` when
+        points are given: SAM 3.1 cached state, or SAM3 interactive features
+        (restored from the encoder cache or via ``set_image``).
+
+        Returns:
+            (masks, scores): (N, H, W) bool array and (N,) float array.
+        """
+        from IVAS.segment_any.visual_prompt import (
+            as_mask_stack, merge_point_results, point_exemplars, to_numpy,
+        )
+
+        if self.model_source not in ("sam3", "sam3.1"):
+            raise ValueError("Visual prompts are supported by SAM3/SAM3.1 only.")
+        boxes = [list(map(float, box)) for box in boxes]
+        box_labels = [bool(label) for label in box_labels]
+        points = [list(map(float, point)) for point in points]
+        point_labels = [bool(label) for label in point_labels]
+        if len(boxes) != len(box_labels) or len(points) != len(point_labels):
+            raise ValueError("Each visual prompt needs exactly one label.")
+        if image is None and self.model_source != "sam3.1":
+            raise ValueError("SAM3 visual prompts need the image.")
+
+        def predict_instance(x, y):
+            mask = self.predict_with_point_prompt([[x, y]], [1])
+            return mask, 1.0
+
+        with self.inference_lock:
+            if image is not None:
+                width, height = image.size
+            else:
+                state = getattr(self.predictor, "_cached_state", None) or {}
+                height = state.get("original_height")
+                width = state.get("original_width")
+                if height is None or width is None:
+                    raise RuntimeError("Wait for image encoding to finish.")
+            exemplar_boxes, exemplar_labels, instances = point_exemplars(
+                predict_instance, points, point_labels
+            )
+            all_boxes = boxes + exemplar_boxes
+            all_labels = box_labels + exemplar_labels
+            if all_boxes:
+                masks, scores = self.predictor.predict_with_visual_prompt(
+                    image, all_boxes, all_labels
+                )
+                masks = as_mask_stack(masks, height, width)
+                scores = to_numpy(scores)
+            else:
+                masks = np.zeros((0, height, width), dtype=bool)
+                scores = np.zeros((0,), dtype=np.float32)
+        if not instances:
+            return masks, np.asarray(scores, dtype=np.float32).reshape(-1)
+        return merge_point_results(masks, scores, instances)
+
 
 class SegAnyVideo:
     """

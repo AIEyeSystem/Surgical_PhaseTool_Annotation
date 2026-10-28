@@ -6,7 +6,7 @@ import typing
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-from IVAS.annotation import Object
+from IVAS.annotation import Object, rectangle_segmentation
 from IVAS.configs import STATUSMode
 
 
@@ -1053,6 +1053,122 @@ class OBB(QtWidgets.QGraphicsPolygonItem, BaseShape):
             origin_source=self.origin_source,
         )
         return obj
+
+
+# ============================================================
+#  BBox — axis-aligned bounding box annotation shape
+# ============================================================
+
+class BBox(OBB):
+    """Axis-aligned bounding box annotation.
+
+    Drawn with two clicks or one drag between opposite corners.  The corners
+    are stored like an OBB (``[TL, TR, BR, BL]``) with a zero edge angle, so
+    dragging any corner keeps the opposite corner fixed and the box upright.
+    Rotation is not offered; the shape serialises as ``shape_type="rectangle"``.
+    """
+
+    def addPoint(self, point: QtCore.QPointF):
+        if getattr(self, "_loading", False):
+            if len(self.points) < 4:
+                BaseShape.addPoint(self, point)
+            return
+        if len(self.points) >= 2:
+            return
+        BaseShape.addPoint(self, point)
+
+    def complete_from_corners(self, first: QtCore.QPointF, second: QtCore.QPointF) -> bool:
+        """Replace the interactive anchor/trailing points with the final box."""
+
+        left, right = sorted((first.x(), second.x()))
+        top, bottom = sorted((first.y(), second.y()))
+        if right - left < 1 or bottom - top < 1:
+            return False
+        self.delete()
+        self._loading = True
+        try:
+            for x, y in rectangle_segmentation(left, top, right, bottom):
+                self.addPoint(QtCore.QPointF(x, y))
+        finally:
+            self._loading = False
+        self.redraw()
+        self.is_drawing = False
+        self.area = self.calculate_area()
+        return True
+
+    def redraw(self):
+        if len(self.points) == 2:
+            # Live preview between the anchor and the trailing corner.
+            first, second = self.points
+            self.setPolygon(QtGui.QPolygonF(QtCore.QRectF(first, second).normalized()))
+            return
+        super().redraw()
+
+    def rotate(self, delta_angle: float):
+        """Axis-aligned boxes never rotate."""
+
+    def _bounds(self):
+        xs = [point.x() + self.pos().x() for point in self.points]
+        ys = [point.y() + self.pos().y() for point in self.points]
+        return min(xs), min(ys), max(xs), max(ys)
+
+    def calculate_area(self) -> float:
+        if len(self.points) < 4:
+            return 0
+        xmin, ymin, xmax, ymax = self._bounds()
+        return (xmax - xmin) * (ymax - ymin)
+
+    def load_object(self, obj):
+        xs = [x for x, _ in obj.segmentation]
+        ys = [y for _, y in obj.segmentation]
+        rectangle = rectangle_segmentation(min(xs), min(ys), max(xs), max(ys))
+        self._loading = True
+        try:
+            for x, y in rectangle:
+                self.addPoint(QtCore.QPointF(x, y))
+        finally:
+            self._loading = False
+        color = self.scene().mainwindow.category_color_dict.get(obj.category, "#6F737A")
+        self.set_drawed(obj.category, obj.group, obj.iscrowd, obj.note, QtGui.QColor(color), obj.layer)
+        self.area = obj.area or self.calculate_area()
+        self.object_id = getattr(obj, "object_id", "")
+        self.track_id = getattr(obj, "track_id", "")
+        self.source = getattr(obj, "source", "manual")
+        self.review_status = getattr(obj, "review_status", "reviewed")
+        self.origin_source = getattr(obj, "origin_source", "")
+
+    def to_object(self) -> Object:
+        if self.is_drawing or len(self.points) < 4:
+            return None
+        xmin, ymin, xmax, ymax = (round(value, 2) for value in self._bounds())
+        self.area = self.calculate_area()
+        return Object(
+            self.category,
+            group=self.group,
+            segmentation=rectangle_segmentation(xmin, ymin, xmax, ymax),
+            area=self.area,
+            layer=self.zValue(),
+            bbox=(xmin, ymin, xmax, ymax),
+            iscrowd=self.iscrowd,
+            note=self.note,
+            object_id=self.object_id,
+            track_id=self.track_id,
+            source=self.source,
+            review_status=self.review_status,
+            origin_source=self.origin_source,
+            shape_type="rectangle",
+        )
+
+
+def shape_for_object(obj):
+    """Return an empty canvas shape matching a stored object's geometry type."""
+
+    shape_type = getattr(obj, "shape_type", "obb" if getattr(obj, "is_obb", False) else "polygon")
+    if shape_type == "rectangle":
+        return BBox()
+    if shape_type == "obb":
+        return OBB()
+    return Polygon()
 
 # ============================================================
 #  Line — repaint-mode guide line

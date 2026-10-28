@@ -158,6 +158,17 @@ def _validate_video_workbench_smoke(mainwindow):
     return workspace
 
 
+def _configured_theme():
+    """Read the saved theme before any widget exists (no flash of default)."""
+    try:
+        from IVAS.configs import SOFTWARE_CONFIG_FILE, load_config
+
+        software = (load_config(SOFTWARE_CONFIG_FILE) or {}).get("software") or {}
+        return software.get("theme")
+    except Exception:
+        return None
+
+
 def main():
     startup_started = time.perf_counter()
     if "--build-sam31-smoke-test" in sys.argv:
@@ -197,7 +208,7 @@ def main():
     app.setOrganizationName(AUTHOR)
     app.setWindowIcon(QtGui.QIcon(LOGO_RESOURCE))
     record_stage("application_created")
-    apply_workbench_theme(app)
+    apply_workbench_theme(app, _configured_theme())
     record_stage("theme_applied")
     mainwindow = MainWindow()
     record_stage("mainwindow_created")

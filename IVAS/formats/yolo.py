@@ -17,15 +17,23 @@ class YOLO(IVAS):
     YOLO format
 
     YOLO use txt to save annotations. Every line container a annotation.
-    format: class_index, x1, y1, x2, y2, x3, y3, ....
+    segmentation format: class_index, x1, y1, x2, y2, x3, y3, ....
+    detection format: class_index, cx, cy, w, h (all normalised to [0, 1]).
 
     For cases where a single object contains multiple polygons, referring to the conversion code of YOLOv8 `general_json2yolo.py <https://github.com/ultralytics/JSON2YOLO/blob/c38a43f342428849c75c103c6d060012a83b5392/general_json2yolo.py>`_, a straight line is drawn between the polygons to combine the multiple polygons into a single polygon for saving.
+
+    Attributes:
+        keep_crowd (bool): keep the crowded objects
+        ignore_background (bool): skip ``__background__`` objects on export
+        detection (bool): export ``cls cx cy w h`` boxes instead of polygons. Each
+            (group, category) becomes one box, the union of its objects' bounds.
     """
 
     def __init__(self):
         super().__init__()
         self.keep_crowd = True
         self.ignore_background = False  # only work when ivas2yolo
+        self.detection = False  # only work when ivas2yolo
 
     def read_from_YOLO(
         self, img_root: str, txt_root: str, class_dict: dict = None
@@ -176,6 +184,43 @@ class YOLO(IVAS):
         ]
 
     @staticmethod
+    def yolo2ivas_bbox(yolo_box, img_width, img_height):
+        """Convert a normalised YOLO ``cx cy w h`` box to clipped pixel bounds.
+
+        Returns None when the clipped box has no area.
+        """
+        cx, cy, w, h = yolo_box
+
+        def clip(value, limit):
+            return round(min(max(value, 0.0), 1.0) * limit, 2)
+
+        bounds = (
+            clip(cx - w / 2, img_width),
+            clip(cy - h / 2, img_height),
+            clip(cx + w / 2, img_width),
+            clip(cy + h / 2, img_height),
+        )
+        if bounds[2] <= bounds[0] or bounds[3] <= bounds[1]:
+            return None
+        return bounds
+
+    @staticmethod
+    def ivas2yolo_bbox(bounds, img_width, img_height):
+        """Convert pixel bounds to a normalised ``cx cy w h`` box clipped to the image.
+
+        Returns None when nothing of the box lies inside the image.
+        """
+        xmin, ymin, xmax, ymax = bounds
+        xmin = min(max(xmin / img_width, 0.0), 1.0)
+        xmax = min(max(xmax / img_width, 0.0), 1.0)
+        ymin = min(max(ymin / img_height, 0.0), 1.0)
+        ymax = min(max(ymax / img_height, 0.0), 1.0)
+        w, h = xmax - xmin, ymax - ymin
+        if w <= 0 or h <= 0:
+            return None
+        return [(xmin + xmax) / 2, (ymin + ymax) / 2, w, h]
+
+    @staticmethod
     def get_ivas_bbox(segmentation):
         """Calculate the bbox from the IVAS segmentation."""
         xs = [point[0] for point in segmentation]  # x-coordinates
@@ -241,6 +286,24 @@ class YOLO(IVAS):
 
                 parts = line.split()  # split each line
                 if not parts:
+                    continue
+                if len(parts) == 5:
+                    # detection box: class cx cy w h
+                    class_index = int(parts[0])
+                    bounds = self.yolo2ivas_bbox(
+                        list(map(float, parts[1:])), image_width, image_height
+                    )
+                    if bounds is None:  # empty or entirely outside the image
+                        continue
+                    category = (
+                        class_index
+                        if class_dict is None
+                        else class_dict.get(class_index, "UNKNOW")
+                    )
+                    objects.append(
+                        self.make_rectangle_obj(category, group, *bounds, layer=layer)
+                    )
+                    group += 1
                     continue
                 if len(parts) < 7 or len(parts) % 2 != 1:
                     raise ValueError("YOLO segmentation needs at least three x/y pairs")
@@ -310,6 +373,32 @@ class YOLO(IVAS):
                     crowds = set(crowds)
                     # 同iscrowd
                     class_index = cates_index_dict.get(cat)
+
+                    if self.detection:
+                        # One box per (group, category): union of the objects' bounds.
+                        bounds = [
+                            self.segmentation_bounds(obj.segmentation)
+                            for obj in objs_with_cat
+                            if (self.keep_crowd or not obj.iscrowd) and obj.segmentation
+                        ]
+                        if not bounds:
+                            continue
+                        if class_index is None:
+                            raise ValueError("Unknown category: {}".format(cat))
+                        box = self.ivas2yolo_bbox(
+                            (
+                                min(b[0] for b in bounds),
+                                min(b[1] for b in bounds),
+                                max(b[2] for b in bounds),
+                                max(b[3] for b in bounds),
+                            ),
+                            anno.info.width,
+                            anno.info.height,
+                        )
+                        if box is not None:
+                            f.write("{} {} {} {} {}\n".format(class_index, *box))
+                        continue
+
                     segmentations = []
 
                     for obj in objs_with_cat:

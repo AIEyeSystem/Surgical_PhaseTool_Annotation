@@ -159,6 +159,9 @@ class VideoAnnotationWorkspaceTests(unittest.TestCase):
                 lambda thread: None,
             ):
                 window = mainwindow_module.MainWindow()
+            # Never write the user's IVAS/software.yaml or category file from tests.
+            window.save_cfg = mock.Mock()
+            window.save_software_cfg = mock.Mock()
             try:
                 workspace = window._ensure_video_workspace()
                 self._disable_player(workspace)

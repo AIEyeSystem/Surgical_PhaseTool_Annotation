@@ -3,32 +3,38 @@ version: "1.0"
 name: "IVAS Visual Annotation Toolkit"
 description: "A focused desktop workspace for temporal video annotation, frame tracking, and precise image segmentation."
 colors:
-  canvas: "#111827"
-  canvas-raised: "#1F2937"
-  surface: "#F6F8FB"
+  canvas: "#0B1220"
+  canvas-raised: "#16233A"
+  canvas-text: "#C9D6EA"
+  chrome: "#FFFFFF"
+  surface: "#F3F7FC"
   surface-raised: "#FFFFFF"
-  surface-subtle: "#E8EEF4"
-  text: "#172033"
-  text-muted: "#526174"
-  border: "#718096"
-  border-subtle: "#CBD5E1"
-  primary: "#087F8C"
-  primary-hover: "#066B76"
-  primary-active: "#075B66"
+  surface-subtle: "#E7EEF8"
+  input: "#FFFFFF"
+  hover: "#EAF2FE"
+  pressed: "#D6E6FD"
+  text: "#0F1E36"
+  text-muted: "#50607A"
+  icon: "#2D4C7C"
+  border: "#7D8DA6"
+  border-subtle: "#D5DEEA"
+  primary: "#1463D8"
+  primary-hover: "#0F55BE"
+  primary-active: "#0B469F"
   on-primary: "#FFFFFF"
-  danger: "#B42318"
-  danger-hover: "#8F1C14"
-  danger-active: "#731610"
+  danger: "#C42B22"
+  danger-hover: "#A3231C"
+  danger-active: "#831C16"
   on-danger: "#FFFFFF"
-  focus: "#087F8C"
-  selection: "#C9E9ED"
-  on-selection: "#0B3E45"
-  disabled-bg: "#E2E8EF"
-  disabled-text: "#526174"
-  timeline-phase: "#21A6B3"
-  timeline-task: "#F4A340"
-  success: "#207A4B"
-  warning: "#9A6700"
+  focus: "#1463D8"
+  selection: "#DCEAFE"
+  on-selection: "#0A3D8F"
+  disabled-bg: "#EEF2F7"
+  disabled-text: "#97A3B5"
+  timeline-phase: "#3B8BEB"
+  timeline-task: "#F2A93B"
+  success: "#1C7C54"
+  warning: "#A15F00"
 typography:
   body:
     fontFamily: "Segoe UI, Microsoft YaHei UI, sans-serif"
@@ -63,17 +69,36 @@ geometry. The main window stays intentionally sparse: frequent actions live in
 compact toolbars, while complete and advanced workflows remain discoverable in
 menus, dropdowns, docks, and focused dialogs.
 The visual thesis is a calm clinical instrument: a dark inspection field keeps
-the image and coloured masks dominant, while cool light panels and a restrained
-teal action color keep controls legible. The signature is the contrast between
-the imaging field and the surrounding measurement console.
+the image and coloured masks dominant, while the surrounding console stays quiet
+and legible. Five bundled themes share one set of semantic roles and one
+stylesheet template (`IVAS/theme.py`); the frontmatter lists the default,
+Medical Blue. Users switch themes in View → Theme or Application → Theme; the
+choice is stored as `software.theme` and applied before the first window paints.
+
+| Key | Name | Character |
+| --- | --- | --- |
+| `medical` | 医学蓝白 Medical Blue | White console, clinical blue actions (default) |
+| `geek` | 极客终端 Geek Terminal | Near-black, neon-green accent, monospace UI |
+| `graphite` | 午夜石墨 Midnight Graphite | Neutral dark grey with a blue accent |
+| `surgical` | 手术室青 Surgical Teal | The original light teal console, refined |
+| `aurora` | 北极光 Nordic Aurora | Cool blue-grey dark with frost accents |
 
 ## Colors
 
-The canvas uses near-black slate to avoid competing with image data and mask
-colors. Panels use tonal light surfaces and quiet blue-grey boundaries. Teal is
-reserved for focus, selection, and active tools; category colors remain owned by
-annotation data. Error, warning, and success colors communicate state and must
-not be used as decoration.
+The canvas is always dark to avoid competing with image data and mask colors;
+`canvas-text` is the only role for marks drawn on it (timeline captions,
+playhead). `chrome` colours the menu bar, toolbars, tab strips and status bar;
+`hover`/`pressed` are the only tool-button fills, so disabled controls fade to
+`disabled-text` instead of becoming grey blocks. The primary colour is reserved
+for focus, the checked Mode segment, primary buttons and Export; category colors
+remain owned by annotation data. Error, warning, and success colors communicate
+state and must not be used as decoration. Every theme must meet the contrast
+pairs in `theme-matrix.json` (text 4.5:1, icons and boundaries 3:1); the
+regression test enforces them.
+
+Icons come from one stroke glyph set (`IVAS/icon_set.py`, 24×24, 1.75 px round
+strokes) rendered per theme: `icon` normally, `disabled-text` when disabled,
+`on-selection` when checked, `on-primary` on filled controls.
 
 ## Typography
 
@@ -84,13 +109,19 @@ widget supports them.
 
 ## Layout
 
-The active media is always the focal region. Mode is the first toolbar dropdown,
-before Project, and displays Video or Frame from the actual central surface.
+The active media is always the focal region. Mode is the first toolbar control:
+a two-segment Video | Frame switch that mirrors the actual central surface (also
+in View → Mode). There is no Project toolbar menu; label/output directories and
+relinking are File commands.
 File groups Image, Video and General commands under visible headings separated
 by dashed rules. Image contains image and frame-label directories; Video contains
 media/project opening, output directory, relinking and video annotation exchange.
-General contains the shared Save, Settings and Exit commands. Project retains
-shortcuts to the same directory and relinking actions. The central surface shows either the image canvas or
+General contains Save, Export dataset…, Import dataset…, Settings…, Keyboard
+shortcuts… and Exit. Export writes the
+open label folder as COCO, YOLO segmentation, YOLO detection, LabelMe, VOC PNG,
+VOC XML or an IVAS copy; Import converts COCO, YOLO, LabelMe or VOC XML into an
+IVAS label folder, warning before overwriting and merging (never replacing) an
+existing category file. The central surface shows either the image canvas or
 video preview for the active case, while shared temporal controls, case panels,
 transport, and the Phase/Task timeline stay in the main-window shell. Opening an
 indexed video frame must retain that case context rather than creating a second
@@ -101,14 +132,27 @@ frame, canvas shortcuts remain frame operations; video shortcuts apply when the
 video panels or transport have focus. Video undo restores only annotations and
 templates, preserving media, frame links and tracking state.
 Toolbars provide the frequent path and labelled dropdown menus
-provide the complete path. Polygon, SAM point, SAM box and Repaint are direct
-toolbar actions. They show icons and short labels at widths of 1100 logical
-pixels or more, and icons with tooltips below that width. Frame/video handoff
-buttons appear beside Mode and Project so drawing tools do not displace them.
+provide the complete path, and each command has exactly one menu-bar home:
+File holds data, import/export and preferences (Settings, Keyboard shortcuts);
+View holds layout and appearance (Mode, Panels, Theme, Language); SAM holds
+models; Tools holds utilities and Plugins; Help holds docs and About. The
+toolbar never repeats preference or help commands.
+Row one is frame editing: Mode, frame handoff, Prev/Next, Polygon, BBox, SAM
+point, SAM box, Repaint, Finish/Cancel/Save/Export, Undo/Redo, Fit and Frame
+tools (rotated box, layer, boolean, zoom and display commands). Drawing tools
+keep their labels longest, then Export; narrow windows fall back to icons with
+tooltips. Row two holds only the Phase/Task controls and the Video tools and
+Tracking menus; it appears once a video case exists or Video mode is shown, so
+image-only work has a single row. The loaded SAM model is state, not a command:
+a status-bar indicator shows it (none, loading, ready, failed) and opens the
+model manager on click. Frame/video handoff buttons appear beside Mode so
+drawing tools do not displace them.
 At the verified compact 640×480 size, secondary
 controls remain reachable through toolbar overflow and dock scrolling.
-Right-hand inspector widths follow window space and the minimum size of their
-styled, translated forms, reserving space for a vertical scrollbar. Larger
+Right-hand inspector widths follow window space, the minimum size of their
+styled, translated forms (reserving a vertical scrollbar) and the full width of
+the inspector tab strip: the canvas shrinks before any tab is hidden, up to the
+48% inspector budget; only beyond that do tab scroll arrows appear. Larger
 windows give inspectors more room; small windows retain scrolling and at least
 half the window for the media area in the default layout. Splitter adjustments
 persist until window space or content requirements change; floating/left-side
@@ -155,6 +199,12 @@ boundaries. Data swatches and mask colors remain square enough to read as
 samples rather than decorative badges.
 
 ## Components
+
+Frame annotation supports polygons, axis-aligned boxes (BBox: two clicks or
+one drag, Shift for a square; stored as `shape_type: rectangle`) and rotated
+boxes (OBB). Frame undo/redo keeps up to 100 snapshots of the current image;
+each finished shape, delete or edit is one step and a drag is one step recorded
+on mouse release. Opening another image starts a new history.
 
 Buttons expose hover, pressed, focused, checked, disabled, and busy states.
 Lists expose hover, keyboard focus, and selected rows. The active annotation

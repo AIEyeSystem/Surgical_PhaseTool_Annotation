@@ -82,10 +82,14 @@ class AnnotationModeTests(unittest.TestCase):
         self.window._activate_video_workspace()
         return workspace
 
-    def test_mode_precedes_project_and_switches_without_loading_a_model(self):
+    def test_mode_switch_leads_toolbar_and_switches_without_loading_a_model(self):
         window = self.window
         widgets = [window.toolBar.widgetForAction(action) for action in window.toolBar.actions()]
-        self.assertLess(widgets.index(window.mode_tools_button), widgets.index(window.project_tools_button))
+        # The segmented Video | Frame switch is the first control; project
+        # locations are File commands, not a duplicate toolbar menu.
+        self.assertIs(widgets[0], window.mode_tools_button)
+        self.assertFalse(hasattr(window, "project_tools_button"))
+        self.assertTrue(window.mode_segment.button("Frame").isChecked())
         self.assertEqual(window.annotation_mode, "Frame")
         window.actionShow_video_workspace.trigger()
         self.assertEqual(window.annotation_mode, "Video")

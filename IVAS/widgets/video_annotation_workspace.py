@@ -103,6 +103,7 @@ class FrameExtractionWorker(QtCore.QThread):
         frames_directory: Path,
         labels_directory: Path,
         cached_image_signature: Optional[Tuple[int, int]] = None,
+        intent: str = "spatial",
     ) -> None:
         super().__init__()
         self.token = int(token)
@@ -112,6 +113,9 @@ class FrameExtractionWorker(QtCore.QThread):
         self.frames_directory = Path(frames_directory)
         self.labels_directory = Path(labels_directory)
         self.cached_image_signature = cached_image_signature
+        # "spatial" hands the frame to the canvas; "keyframe" only records a
+        # temporal point and must survive canvas/mode changes.
+        self.intent = str(intent)
         self.cancel_event = Event()
 
     def cancel(self) -> None:
@@ -359,7 +363,7 @@ class TemporalTimeline(QtWidgets.QWidget):
         painter.setPen(theme_color("border-subtle"))
         for lane in (0, 1):
             lane_rect = self._lane_rect(lane)
-            painter.setPen(theme_color("border-subtle"))
+            painter.setPen(theme_color("canvas-text"))
             painter.drawText(QtCore.QRectF(4, lane_rect.top(), 46, lane_rect.height()),
                              QtCore.Qt.AlignVCenter, ("Phase", "Task")[lane])
             painter.fillRect(lane_rect, theme_color("canvas-raised"))
@@ -373,7 +377,7 @@ class TemporalTimeline(QtWidgets.QWidget):
             annotation_rect = self._annotation_rect(annotation)
             painter.setBrush(theme_color(colour_role))
             if annotation.id == self._selected_annotation_id:
-                painter.setPen(QtGui.QPen(theme_color("on-primary"), 2))
+                painter.setPen(QtGui.QPen(theme_color("canvas-text"), 2))
             else:
                 painter.setPen(QtCore.Qt.NoPen)
             painter.drawRoundedRect(annotation_rect, 3, 3)
@@ -393,7 +397,7 @@ class TemporalTimeline(QtWidgets.QWidget):
                 )
 
         playhead_x = self._x_for_time(self._position_ms)
-        painter.setPen(QtGui.QPen(theme_color("on-primary"), 2))
+        painter.setPen(QtGui.QPen(theme_color("canvas-text"), 2))
         painter.drawLine(
             QtCore.QPointF(playhead_x, self._content_rect().top()),
             QtCore.QPointF(playhead_x, self._content_rect().bottom()),
@@ -957,7 +961,7 @@ class VideoAnnotationWorkspace(QtWidgets.QWidget):
             self.video_widget.setAlignment(QtCore.Qt.AlignCenter)
             fallback_palette = self.video_widget.palette()
             fallback_palette.setColor(
-                QtGui.QPalette.WindowText, theme_color("border-subtle")
+                QtGui.QPalette.WindowText, theme_color("canvas-text")
             )
             self.video_widget.setPalette(fallback_palette)
             self.video_frame_layout.addWidget(self.video_widget)
@@ -1323,7 +1327,9 @@ class VideoAnnotationWorkspace(QtWidgets.QWidget):
             self.pause()
             self._on_position_changed(position)
         elif previous is not None:
-            self.seek(previous)
+            # Restore the edited frame even while a key-frame capture started
+            # from Frame is still running; seek() rejects user seeks then.
+            self._seek_player(previous)
         self._sync_transport_controls()
         self.context_changed.emit()
 
@@ -1576,8 +1582,11 @@ class VideoAnnotationWorkspace(QtWidgets.QWidget):
         )
         if not filename:
             return
+        # Ask once: a media relink below retries open_project up to twice.
+        if not self._confirm_discard_pending_interval("打开项目"):
+            return
         try:
-            self.open_project(Path(filename))
+            self.open_project(Path(filename), pending_confirmed=True)
         except MediaRelinkRequired as error:
             media, _ = QtWidgets.QFileDialog.getOpenFileName(
                 self,
@@ -1588,7 +1597,7 @@ class VideoAnnotationWorkspace(QtWidgets.QWidget):
             if not media:
                 return
             try:
-                self.open_project(Path(filename), Path(media))
+                self.open_project(Path(filename), Path(media), pending_confirmed=True)
             except MediaRelinkRequired:
                 answer = QtWidgets.QMessageBox.warning(
                     self,
@@ -1599,7 +1608,12 @@ class VideoAnnotationWorkspace(QtWidgets.QWidget):
                 )
                 if answer != QtWidgets.QMessageBox.Yes:
                     return
-                self.open_project(Path(filename), Path(media), allow_identity_change=True)
+                self.open_project(
+                    Path(filename),
+                    Path(media),
+                    allow_identity_change=True,
+                    pending_confirmed=True,
+                )
         except Exception as error:
             QtWidgets.QMessageBox.critical(self, "打开项目失败", str(error))
 
@@ -1632,8 +1646,16 @@ class VideoAnnotationWorkspace(QtWidgets.QWidget):
         project_path: Path,
         media_path: Optional[Path] = None,
         allow_identity_change: bool = False,
+        pending_confirmed: bool = False,
     ) -> UnifiedVideoProjectStore:
-        if self._pending_interval is not None and not self._confirm_discard_pending_interval("打开项目"):
+        """Open a project; ``pending_confirmed`` means the caller already
+        obtained consent to discard the unfinished interval."""
+        discard_pending = self._pending_interval is not None
+        if (
+            discard_pending
+            and not pending_confirmed
+            and not self._confirm_discard_pending_interval("打开项目")
+        ):
             return self.store
         if self.store is not None and self.store.is_dirty:
             self.store.save()
@@ -1651,6 +1673,9 @@ class VideoAnnotationWorkspace(QtWidgets.QWidget):
                 store.save()
         self._sync_default_exports(store)
         self._activate_store(store, video_path, metadata)
+        if discard_pending:
+            # The start time belongs to the previous case's timeline.
+            self._clear_pending_interval()
         return store
 
     def relink_media_dialog(self) -> None:
@@ -1826,10 +1851,38 @@ class VideoAnnotationWorkspace(QtWidgets.QWidget):
             worker.cancel()
         self.status_message.emit("已请求取消后台视频任务。")
 
-    def cancel_frame_extraction(self) -> None:
-        """Cancel even a queued completion when a standalone image is opened."""
-        if self._extraction_worker is not None:
-            self._extraction_worker.cancel()
+    def cancel_frame_extraction(self, include_keyframe: bool = False) -> None:
+        """Cancel a pending frame-to-canvas handoff, even a queued completion.
+
+        Key-frame captures only add a temporal point and never take over the
+        canvas, so media or mode changes leave them running unless the caller
+        explicitly asks for them to be cancelled as well.
+        """
+        worker = self._extraction_worker
+        if worker is None:
+            return
+        if include_keyframe or getattr(worker, "intent", "spatial") == "spatial":
+            worker.cancel()
+
+    def linked_frame_filenames(self, image_directory: Path) -> List[str]:
+        """Image names in ``image_directory`` that are linked spatial frames.
+
+        The frames directory also holds key-frame captures, which are temporal
+        assets rather than segmentation frames; callers listing a video-case
+        directory should only offer these linked names.
+        """
+        if self.store is None:
+            return []
+        directory = os.path.normcase(str(Path(image_directory).resolve()))
+        names = set()
+        for frame in self.store.project.get("spatial_frames", []):
+            stored = frame.get("image_path")
+            if not stored:
+                continue
+            image = self._resolve_project_asset(stored)
+            if os.path.normcase(str(image.parent)) == directory and image.is_file():
+                names.add(image.name)
+        return sorted(names)
 
     def position_ms(self) -> int:
         if self._frame_edit_position is not None:
@@ -1891,6 +1944,10 @@ class VideoAnnotationWorkspace(QtWidgets.QWidget):
     def seek(self, milliseconds: int) -> None:
         if self._busy or self._frame_edit_position is not None:
             return
+        self._seek_player(milliseconds)
+
+    def _seek_player(self, milliseconds: int) -> None:
+        """Move the player and playhead without the user-seek guards."""
         position = min(self.duration_ms(), max(0, int(milliseconds)))
         self._last_position_ms = position
         if self.vlc_player is not None:
@@ -2800,6 +2857,7 @@ class VideoAnnotationWorkspace(QtWidgets.QWidget):
             self.store.frames_directory,
             self.store.labels_directory,
             cached_image_signature=self._frame_cache.get(frame_index),
+            intent=self._frame_extraction_intent,
         )
         worker.ready.connect(self._on_extraction_ready)
         worker.failed.connect(self._on_extraction_failed)
@@ -2928,7 +2986,13 @@ class VideoAnnotationWorkspace(QtWidgets.QWidget):
         QtWidgets.QMessageBox.critical(self, title, message)
 
     def _on_extraction_finished(self) -> None:
-        if self.sender() is self._extraction_worker:
+        worker = self.sender()
+        if worker is not None and worker is self._extraction_worker:
+            if worker.cancel_event.is_set():
+                # Replace the stale "Extracting frame N…" status.
+                self.status_message.emit(
+                    self._t("已取消提取视频帧。", "Frame extraction was cancelled.")
+                )
             self._set_frame_extraction_busy(False)
             self._frame_extraction_intent = "spatial"
             self._keyframe_template_id = ""
